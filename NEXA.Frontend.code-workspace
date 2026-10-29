@@ -1,0 +1,25 @@
+{
+  "folders": [{ "name": "NEXA · Frontend", "path": "." }],
+  "settings": {
+    "editor.tabSize": 2,
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "files.exclude": {
+      "**/node_modules": true, "**/bin": true, "**/obj": true,
+      "**/.vs": true, "**/.runtime": true, "dist": true, "evidence": true,
+      "**/*.cs": true, "**/*.csproj*": true, "**/*.sln": true,
+      "**/*.zip": true, "Properties": true
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {"label":"NEXA: iniciar frontend","type":"shell","command":"npm.cmd run dev","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]},
+      {"label":"NEXA: iniciar backend","type":"shell","command":"dotnet run --project NEXA.csproj --no-launch-profile --urls http://127.0.0.1:5199","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]},
+      {"label":"NEXA: compilar frontend","type":"shell","command":"npm.cmd run build","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]},
+      {"label":"NEXA: probar reglas de la maqueta","type":"shell","command":"node --test tests/domain.test.mjs","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]}
+    ]
+  }
+}
+
+

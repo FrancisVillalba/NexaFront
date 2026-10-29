@@ -1,0 +1,18 @@
+/* Keep the existing base styles while migrating screens one at a time. */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "./styles.css" layer(legacy);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw) source(none);
+@source "./";
+
+@theme {
+  --color-nexa-petroleum: #07343d;
+  --color-nexa-heading: #062c34;
+  --color-nexa-blue: #0784f7;
+  --color-nexa-blue-hover: #0777dc;
+  --color-nexa-cyan: #8fe3e3;
+  --color-nexa-surface: #fafbfd;
+  --color-nexa-label: #435c77;
+  --color-nexa-muted: #8394a9;
+  --color-nexa-border: #ccd9e8;
+}

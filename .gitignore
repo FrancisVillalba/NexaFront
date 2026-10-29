@@ -1,0 +1,14 @@
+node_modules/
+bin/
+obj/
+dist/
+.env.local
+.env.*.local
+*.user
+.certificates/
+.env
+.vs/
+*.suo
+*.pfx
+*.p12
+*.key
