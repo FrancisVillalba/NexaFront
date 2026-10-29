@@ -1,14 +1,48 @@
+# Dependencias y compilación del frontend
 node_modules/
+dist/
+.vite/
+
+# Host ASP.NET Core
 bin/
 obj/
-dist/
-.env.local
-.env.*.local
-*.user
-.certificates/
+artifacts/
+publish/
+
+# Configuración privada (conservar archivos de ejemplo)
 .env
+.env.*
+!.env.example
+!.env.*.example
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+
+# Archivos personales del IDE
 .vs/
+*.user
 *.suo
+*.userosscache
+*.sln.docstates
+
+# Pruebas y cobertura
+coverage/
+TestResults/
+playwright-report/
+test-results/
+
+# Certificados y claves privadas
+.certificates/
 *.pfx
 *.p12
 *.key
+
+# Logs, copias de seguridad y archivos temporales
+*.log
+*.backup
+*.dump
+*.bak
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
