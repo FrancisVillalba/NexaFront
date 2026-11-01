@@ -64,10 +64,7 @@ export function Login({
             Ingresá con tu cuenta.
           </p>
 
-          <form
-            onSubmit={handleSubmit}
-            className="tw:grid tw:gap-6 tw:min-[901px]:gap-8"
-          >
+          <form onSubmit={handleSubmit} className="tw:grid tw:gap-6 tw:min-[901px]:gap-8">
             <label className="tw:flex tw:min-w-0 tw:flex-col tw:gap-[11px]">
               <span className="tw:text-[13px] tw:font-semibold tw:text-nexa-label tw:min-[901px]:text-base">
                 Usuario

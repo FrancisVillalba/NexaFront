@@ -26,11 +26,7 @@ export function mapSessionUser(usuario: SessionUserDto): User {
   };
 }
 
-export async function login(
-  nombreUsuario: string,
-  password: string,
-  remember = false,
-) {
+export async function login( nombreUsuario: string, password: string, remember = false,) {
   const response = await api<LoginResponse>(
     "/api/usuarios/auth/login",
     { nombreUsuario: nombreUsuario.trim(), password },
