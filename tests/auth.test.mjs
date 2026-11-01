@@ -1,8 +1,8 @@
 import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { SESSION_KEY, SESSION_ENDED_EVENT, saveSession, getSession, clearSession } from '../src/services/authSession.js';
-import { api } from '../src/services/api.js';
-import { login, restoreSession } from '../src/services/authService.js';
+import { SESSION_KEY, SESSION_ENDED_EVENT, saveSession, getSession, clearSession } from '../src/services/authSession.ts';
+import { api } from '../src/services/api.ts';
+import { login, restoreSession } from '../src/services/authService.ts';
 
 class Storage {
   values = new Map();

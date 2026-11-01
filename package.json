@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/domain.test.mjs tests/auth.test.mjs"
+    "test": "tsx --test tests/domain.test.mjs tests/auth.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tabler/icons-react": "^3.49.0",
@@ -19,6 +20,10 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "tailwindcss": "^4.3.3"
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   }
 }

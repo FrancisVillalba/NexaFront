@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seed,checkout,applyMovement,receivePurchase,payInvoice,voidInvoice,cashExpected} from '../src/domain.js';
+import {seed,checkout,applyMovement,receivePurchase,payInvoice,voidInvoice,cashExpected} from '../src/domain.ts';
 const sale={items:[{productId:1,qty:1}],client:'c1',warehouse:'Casa central',discount:0,received:500000,payment:'Efectivo'};
 test('Venta descuenta stock, cobra y registra movimiento sin mutar estado original',()=>{const original=seed(),r=checkout(original,sale,'Prueba');assert.equal(original.products[0].stocks['Casa central'],12);assert.equal(r.state.products[0].stocks['Casa central'],11);assert.equal(r.invoice.total,485000);assert.equal(cashExpected(r.state.cash)-cashExpected(original.cash),485000);assert.equal(r.state.movements[0].qty,-1);});
 test('Stock y unidades inválidas se rechazan de forma atómica',()=>{assert.throws(()=>checkout(seed(),{...sale,items:[{productId:1,qty:13}]},'Prueba'),/Stock insuficiente/);assert.throws(()=>checkout(seed(),{...sale,items:[{productId:1,qty:1.5}]},'Prueba'),/enteras/);});

@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      warmup: { clientFiles: ['./src/main.jsx'] },
+      warmup: { clientFiles: ['./src/main.tsx'] },
     },
     plugins: [react(), tailwindcss()],
   };

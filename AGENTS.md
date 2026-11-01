@@ -22,9 +22,9 @@ Build app UI in `src/`. User explicitly removed Sites/OpenAI hosting integration
 
 - Login visual selected: option 2, petroleum panel about 27% width, ample light form area, welcome heading and discreet demo access. Keep the supplied green NEXA logo.
 
-- MVC migration canceled. User chose React with TypeScript as learning direction. Runtime still uses JavaScript; do not claim TypeScript migration is complete. Frontend workspace: NEXA.Frontend.code-workspace. Learning guide: docs/APRENDER-REACT.md. Database work deferred.
+- MVC migration canceled. User chose React with TypeScript as learning direction. Frontend source now uses strict TypeScript (.ts/.tsx). Frontend workspace: NEXA.Frontend.code-workspace. Learning guide: docs/APRENDER-REACT.md. Database work deferred.
 
-El usuario eligió Tailwind para los estilos. Tailwind 4 está integrado con prefijo tw: y sin Preflight; Login.jsx utiliza utilidades y el resto conserva styles.css en la capa legacy. No afirmar que el proyecto ya está migrado a TypeScript.
+El usuario eligió Tailwind para los estilos. Tailwind 4 está integrado con prefijo tw: y sin Preflight; Login.tsx utiliza utilidades y el resto conserva styles.css en la capa legacy. La migración a TypeScript está implementada; comprobar tipos con npm run typecheck.
 
 
 - Sidebar: omit the business card containing company name and 'Tu negocio, bajo control', as explicitly requested by the user.
@@ -55,3 +55,5 @@ El usuario eligió Tailwind para los estilos. Tailwind 4 está integrado con pre
 
 - 2026-10-28: El frontend autentica contra NexaBack (PostgreSQL) mediante usuario y contraseña. No restaurar login demo por correo/cookie. Los tokens van en sessionStorage por defecto o localStorage con Recordar mi sesión, y se envían como Bearer. No guardar contraseñas ni claves JWT en el frontend. Restaurar la sesión con /api/usuarios/auth/me.
 - El host ASP.NET del front sirve la SPA y reenvía /api con YARP; no contiene usuarios demo. Vite usa el mismo proxy hacia NEXA_API_URL (por defecto HTTPS localhost:44388). Los módulos comerciales siguen siendo locales mientras se implementan sus endpoints.
+
+- 2026-10-29: El usuario pidió migrar el frontend a TypeScript. Mantener strict:true, contratos tipados y build con tsc --noEmit antes de Vite. No usar any ni desactivar la comprobación para resolver errores. El usuario hará commits y pushes manualmente: dejar los cambios sin commit y explicar lo modificado.

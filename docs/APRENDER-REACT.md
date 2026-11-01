@@ -4,7 +4,7 @@ Usá esta guía como una secuencia de ejercicios sobre tu proyecto de ferreterí
 
 ## Estado real del proyecto
 
-NEXA hoy utiliza React con JavaScript: `App.jsx`, `main.jsx` y `domain.js`. Todavía no está migrado a TypeScript. El objetivo elegido es React + TypeScript; habrá que agregar tipos y configuración por etapas, no solamente renombrar archivos.
+NEXA utiliza React con TypeScript: `App.tsx`, `main.tsx` y `domain.ts`. `tsconfig.json` activa el modo estricto y `npm.cmd run typecheck` verifica los tipos sin generar archivos.
 
 El backend sigue en ASP.NET Core 10 con C#. Se canceló la migración a MVC/Razor. El login y los usuarios ya usan NexaBack y PostgreSQL; los datos comerciales siguen siendo de demostración en el navegador.
 
@@ -15,7 +15,7 @@ Abrí el archivo `NEXA.Frontend.code-workspace` de esta carpeta. El workspace mu
 También podés usar Archivo → Abrir carpeta y seleccionar:
 
 ```text
-C:\NEXA PROYECTOS\front\nexa\nexa
+C:\NEXA\front\nexa\nexa
 ```
 
 No abras solo `src`: npm y Vite necesitan la raíz del proyecto.
@@ -28,7 +28,7 @@ npm.cmd run dev
 
 Abrí la dirección que muestra Vite, habitualmente `http://localhost:5173`. Si faltan dependencias, ejecutá antes `npm.cmd ci`.
 
-El login utiliza `/api/usuarios/auth/login`; el token se guarda en authSession.js y se envía como Bearer desde api.js. Configuramos Vite para reenviar esas llamadas al backend en `https://localhost:44388`. Ese backend debe estar funcionando; si ya lo tenés iniciado, no lo arranques por segunda vez.
+El login utiliza `/api/usuarios/auth/login`; el token se guarda en authSession.ts y se envía como Bearer desde api.ts. Configuramos Vite para reenviar esas llamadas al backend en `https://localhost:44388`. Ese backend debe estar funcionando; si ya lo tenés iniciado, no lo arranques por segunda vez.
 
 Si ASP.NET Core utiliza otro puerto, tomá su URL HTTP real e iniciá Vite así:
 
@@ -46,16 +46,16 @@ En el servidor de Vite, guardar un archivo actualiza la vista de desarrollo. En 
 | Archivo | Qué hace |
 |---|---|
 | `package.json` | Define dependencias y comandos: dev y build |
-| `src/main.jsx` | Inicia React y monta App |
-| `src/App.jsx` | Contiene componentes y pantallas; buscá Inventory y SaleEditor |
-| `src/domain.js` | Datos y reglas de la maqueta; buscá checkout y applyMovement |
+| `src/main.tsx` | Inicia React y monta App |
+| `src/App.tsx` | Contiene componentes y pantallas; buscá Inventory y SaleEditor |
+| `src/domain.ts` | Datos y reglas de la maqueta; buscá checkout y applyMovement |
 | `src/styles.css` | Diseño general y adaptación a celular |
-| `src/features/auth/Login.jsx` | Formulario de acceso con clases de Tailwind |
+| `src/features/auth/Login.tsx` | Formulario de acceso con clases de Tailwind |
 | `src/tailwind.css` | Entrada de estilos y colores del tema |
 | `public/assets` | Logo y fotos |
 | `vite.config.mjs` | Configuración de Vite y proxy de API |
 
-Usá Ctrl+P para abrir archivos y Ctrl+Shift+F para buscar. `App.jsx` es grande porque nació como maqueta: conviene dividirlo gradualmente, no usarlo como modelo definitivo de organización.
+Usá Ctrl+P para abrir archivos y Ctrl+Shift+F para buscar. `App.tsx` es grande porque nació como maqueta: conviene dividirlo gradualmente, no usarlo como modelo definitivo de organización.
 
 ## Conceptos desde tu experiencia con C#
 
@@ -137,17 +137,21 @@ export function BuscadorProductos({ productos, onSeleccionar }: Props) {
 
 Leelo en este orden: contrato Producto, props, estado, filtro calculado y JSX. El padre entrega productos y recibe la selección mediante onSeleccionar. No necesitamos un efecto para filtrar.
 
-## Migración gradual a TypeScript
+## TypeScript ya está configurado
 
-Primero se instalan las herramientas:
+- `.ts` contiene tipos y lógica sin JSX: `types.ts`, `domain.ts` y servicios.
+- `.tsx` permite escribir componentes con JSX: `App.tsx`, `Login.tsx` y `ui.tsx`.
+- `src/types.ts` define los contratos de la API y los modelos comerciales. Para quien viene de C#, una `interface` describe la forma de un DTO, pero desaparece al compilar: las respuestas HTTP siguen necesitando validación en ejecución.
+- `src/uiTypes.ts` define las props, los formularios y el contexto compartido de React.
+- `tsconfig.json` activa `strict: true`. No usamos `any` ni desactivamos la comprobación de archivos.
 
 ```powershell
-npm.cmd install --save-dev typescript @types/react @types/react-dom
+npm.cmd run typecheck # Comprueba los tipos sin generar archivos
+npm.cmd test          # Ejecuta las pruebas usando tsx para importar TypeScript
+npm.cmd run build     # Comprueba los tipos y después compila con Vite
 ```
 
-Luego se agrega tsconfig.json, se habilita JSX y se convierte un componente pequeño de .jsx a .tsx. Los módulos de lógica pasan de .js a .ts. Hay que resolver tipos de props, eventos y respuestas: renombrar no alcanza.
-
-Durante la transición pueden convivir JS y TS con allowJs. Los nuevos archivos de TypeScript deberían usar comprobación estricta. Agregá una verificación como `tsc --noEmit`: Vite transpila TypeScript, pero no comprueba los tipos por sí solo.
+Por ejemplo, `api<SessionUserDto>(...)` indica qué respuesta esperamos del backend. Es comparable a `ReadFromJsonAsync<UsuarioSesionDto>()` en C#: ayuda a detectar errores de propiedades, sin sustituir la validación del servidor.
 
 Estructura objetivo (todavía no creada):
 
@@ -189,6 +193,6 @@ Primera sesión recomendada: separar y entender el login. Es un cambio pequeño 
 
 ## Estilos con Tailwind
 
-El login está separado en src/features/auth/Login.jsx y utiliza Tailwind CSS. Consultá docs/TAILWIND.md para editar sus clases y colores. El resto conserva CSS durante la migración gradual.
+El login está separado en src/features/auth/Login.tsx y utiliza Tailwind CSS. Consultá docs/TAILWIND.md para editar sus clases y colores. El resto conserva CSS durante la migración gradual.
 
 

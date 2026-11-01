@@ -17,7 +17,7 @@
       {"label":"NEXA: iniciar frontend","type":"shell","command":"npm.cmd run dev","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]},
       {"label":"NEXA: iniciar backend","type":"shell","command":"dotnet run --project NEXA.csproj --no-launch-profile --urls http://127.0.0.1:5199","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]},
       {"label":"NEXA: compilar frontend","type":"shell","command":"npm.cmd run build","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]},
-      {"label":"NEXA: probar reglas de la maqueta","type":"shell","command":"node --test tests/domain.test.mjs","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]}
+      {"label":"NEXA: probar reglas de la maqueta","type":"shell","command":"npm.cmd test","options":{"cwd":"${workspaceFolder}"},"problemMatcher":[]}
     ]
   }
 }
