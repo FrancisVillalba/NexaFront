@@ -82,13 +82,18 @@ export function Modal({
   className?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
+  const cerrarActual = useRef(onClose);
+  useEffect(() => {
+    // Escape debe usar el estado actual del formulario, incluidos cambios sin guardar.
+    cerrarActual.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const old = document.activeElement,
       prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     ref.current?.querySelector<HTMLElement>("input,select,button")?.focus();
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") cerrarActual.current();
       if (e.key === "Tab") {
         const els = ref.current!.querySelectorAll<HTMLElement>(
             "button:not(:disabled),input,select,textarea,a[href]",

@@ -20,7 +20,6 @@ export function Inventory({ title }: { title: string }) {
   const {
     data,
     warehouse,
-    productForm,
     movementForm,
     inventoryQuery: q,
     setInventoryQuery: setQ,
@@ -86,13 +85,14 @@ export function Inventory({ title }: { title: string }) {
           Exportar
         </Button>
         <Button
-          access="productos.crear"
-          icon={I.Plus}
-          onClick={() => productForm()}
+          access="productos.ver"
+          icon={I.Box}
+          onClick={() => go("productos")}
         >
-          Nuevo producto
+          Administrar productos
         </Button>
       </PageTitle>
+      <p className="form-help">Este inventario conserva datos de demostración y todavía no usa el catálogo registrado en Productos.</p>
       <div className="inventory-layout">
         <div>
           <div className="stats-grid compact">
@@ -203,12 +203,12 @@ export function Inventory({ title }: { title: string }) {
                   </td>
                   <td>
                     <IconButton
-                      access="productos.editar"
-                      icon={I.Edit}
-                      label={"Editar " + x.name}
+                      access="inventario.ver"
+                      icon={I.Eye}
+                      label={"Ver existencias de " + x.name}
                       onClick={(e) => {
                         e.stopPropagation();
-                        productForm(x);
+                        setSelected(x.id);
                       }}
                     />
                   </td>
@@ -319,14 +319,6 @@ export function Inventory({ title }: { title: string }) {
                 Aún no hay movimientos para este producto.
               </p>
             )}
-            <Button
-              access="productos.editar"
-              variant="outline full"
-              icon={I.Edit}
-              onClick={() => productForm(p)}
-            >
-              Editar producto
-            </Button>
           </Panel>
         </aside>
       </div>

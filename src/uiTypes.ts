@@ -75,7 +75,6 @@ export interface AppContext {
   confirm: (title: string, text: string, onConfirm: () => void) => void;
   modal: ModalModel | null;
   setModal: Setter<ModalModel | null>;
-  productForm: (product?: Product) => void;
   movementForm: (product?: Product, type?: string) => void;
   contactForm: (type: string, item?: Contact) => void;
   viewInvoice: (invoice: Invoice) => void;

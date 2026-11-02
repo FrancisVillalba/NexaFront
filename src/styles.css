@@ -32,3 +32,7 @@
 .row-actions .user-action{width:76px;height:29px;flex:none}
 
 .access-option{display:inline-flex;align-items:center;gap:7px;font-size:12px;cursor:pointer}.access-option input{width:17px;height:17px;accent-color:#0784f7}.access-options{display:flex;gap:14px;flex-wrap:wrap}.access-matrix td{vertical-align:middle}.access-matrix .access-option:has(input:disabled){cursor:default;opacity:.65}
+
+/* ABM de productos: campos agrupados y acciones con el mismo tamaño. */
+.productos-campos{border:0;padding:0;margin:0;min-width:0}.row-actions .productos-accion{width:100px;height:31px;flex:none}
+

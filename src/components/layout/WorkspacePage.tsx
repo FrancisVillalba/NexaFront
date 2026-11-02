@@ -6,6 +6,7 @@ import { routeAccess } from "../../services/accessControl";
 import { Panel } from "../shared/Panel";
 import { Dashboard } from "../../modulos/inicio/Inicio";
 import { Inventory } from "../../modulos/inventario/Inventario";
+import { ProductosListado } from "../../modulos/productos/productosListado";
 import { Movements } from "../../modulos/movimientos/Movimientos";
 import { Sales } from "../../modulos/ventas/Ventas";
 import { SaleEditor } from "../../modulos/ventas/ventasEdicion";
@@ -41,10 +42,10 @@ export function WorkspacePage({
         </Panel>
       ) : route === "inicio" ? (
         <Dashboard />
-      ) : route === "inventario" || route === "productos" ? (
-        <Inventory
-          title={route === "productos" ? "Productos" : "Inventario"}
-        />
+      ) : route === "productos" ? (
+        <ProductosListado />
+      ) : route === "inventario" ? (
+        <Inventory title="Inventario" />
       ) : route === "movimientos" ? (
         <Movements />
       ) : route === "ventas" ? (

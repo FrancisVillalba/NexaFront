@@ -4,7 +4,6 @@ import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { usePaymentActions } from "../../modulos/ventas/ventasCobrosAcciones";
 import { useContactActions } from "../../modulos/contactos/contactosAcciones";
 import { useMovementActions } from "../../modulos/movimientos/movimientosAcciones";
-import { useProductActions } from "../../modulos/inventario/inventarioProductosAcciones";
 import type { Invoice } from "../../types/commercial";
 import type { FormField, FormValues, FormModel, ModalModel } from "../../uiTypes";
 import type { CommercialState, CartItem } from "../../types";
@@ -142,7 +141,6 @@ export function NexaWorkspace() {
     setSaleClient("c1");
     go("nueva-venta");
   }
-  const { productForm } = useProductActions({ data, can, notify, commit, form });
   const { movementForm } = useMovementActions({ data, can, notify, commit, form, warehouse, user });
   const { contactForm } = useContactActions({ data, can, notify, commit, form });
   const { pay } = usePaymentActions({ data, can, notify, commit, form });
@@ -159,7 +157,6 @@ export function NexaWorkspace() {
     confirm,
     modal,
     setModal,
-    productForm,
     movementForm,
     contactForm,
     viewInvoice,
