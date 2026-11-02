@@ -6,6 +6,7 @@ import type {
 import type { Icon } from "../uiTypes";
 import React, { useEffect, useRef } from "react";
 import * as I from "../icons";
+import { useAccess } from "../services/AccessContext";
 const cn = (...a: (string | false | undefined)[]) =>
   a.filter(Boolean).join(" ");
 
@@ -22,12 +23,29 @@ export function Brand({ dark = false }: { dark?: boolean }) {
 export function IconButton({
   icon: Icon,
   label,
+  access,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: Icon; label: string }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  icon: Icon;
+  label: string;
+  access?: string | string[];
+}) {
+  const can = useAccess();
+  if (access && !(Array.isArray(access) ? access : [access]).every(can))
+    return null;
   return (
     <button className="icon-btn" aria-label={label} title={label} {...props}>
       <Icon size={19} />
     </button>
+  );
+}
+
+// Centralizar la marca hace que todos los formularios indiquen los obligatorios igual.
+export function RequiredMark() {
+  return (
+    <span className="required-mark" aria-hidden="true">
+      *
+    </span>
   );
 }
 
@@ -41,7 +59,10 @@ export function Field({
 }) {
   return (
     <label className="field">
-      <span>{label}</span>
+      <span>
+        {label}
+        {props.required && <RequiredMark />}
+      </span>
       {children || <input {...props} />}
     </label>
   );

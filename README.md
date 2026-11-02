@@ -42,6 +42,15 @@ El token es accesible a JavaScript al usar Web Storage: evitar HTML no confiable
 
 La pantalla consulta usuarios, personas y perfiles reales. Permite crear una cuenta seleccionando una persona activa sin usuario y un perfil activo ya registrados. No crea personas automáticamente. La activación/desactivación todavía no tiene un endpoint del backend y no se simula localmente. Las operaciones requieren Administrador.
 
+## Personas
+
+El menú **Personas**, disponible para Administrador, consulta PostgreSQL mediante NexaBack.
+Permite buscar por nombre, apellido, documento o correo; filtrar por estado; paginar;
+crear, editar, desactivar y reactivar personas. La baja es lógica y no borra relaciones.
+No se permite desactivar a la persona del último administrador activo.
+
+El código comentado está en `src/features/people/People.tsx` y `peopleService.ts`.
+
 ## Módulos comerciales
 
 Inicio, inventario, movimientos, compras, ventas, presupuestos, caja, clientes, proveedores y reportes siguen funcionando con datos de demostración en localStorage. Los comprobantes no tienen validez fiscal. La fecha comercial sigue fija en 26/10/2026.
@@ -65,7 +74,6 @@ La autenticación real no convierte esos datos en persistencia de negocio ni en 
 ## Verificación
 
 ```powershell
-npm.cmd test
 npm.cmd run build
 dotnet build NEXA.csproj
 ```
@@ -85,8 +93,7 @@ Los contratos de datos están en `src/types.ts`; las props y el contexto de la i
 
 ```powershell
 npm.cmd run typecheck
-npm.cmd test
 npm.cmd run build
 ```
 
-La compilación ejecuta primero `tsc --noEmit` y después Vite. Las pruebas existentes siguen en `.mjs` e importan los módulos TypeScript mediante `tsx`.
+La compilación ejecuta primero `tsc --noEmit` y después Vite.

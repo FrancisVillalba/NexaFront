@@ -2,7 +2,7 @@ import type { SubmitEvent } from "react";
 import type { User } from "../../types";
 import React, { useState } from "react";
 import * as I from "../../icons";
-import { Brand } from "../../components/ui";
+import { Brand, RequiredMark } from "../../components/ui";
 import { login } from "../../services/authService";
 
 // Complete, static class names let Tailwind detect every state at build time.
@@ -67,7 +67,7 @@ export function Login({
           <form onSubmit={handleSubmit} className="tw:grid tw:gap-6 tw:min-[901px]:gap-8">
             <label className="tw:flex tw:min-w-0 tw:flex-col tw:gap-[11px]">
               <span className="tw:text-[13px] tw:font-semibold tw:text-nexa-label tw:min-[901px]:text-base">
-                Usuario
+                Usuario <RequiredMark />
               </span>
               <span className={fieldClasses}>
                 <I.Users size={23} aria-hidden="true" />
@@ -87,7 +87,7 @@ export function Login({
             </label>
             <label className="tw:flex tw:min-w-0 tw:flex-col tw:gap-[11px]">
               <span className="tw:text-[13px] tw:font-semibold tw:text-nexa-label tw:min-[901px]:text-base">
-                Contraseña
+                Contraseña <RequiredMark />
               </span>
               <span className={fieldClasses}>
                 <I.Lock size={23} aria-hidden="true" />

@@ -147,7 +147,6 @@ Leelo en este orden: contrato Producto, props, estado, filtro calculado y JSX. E
 
 ```powershell
 npm.cmd run typecheck # Comprueba los tipos sin generar archivos
-npm.cmd test          # Ejecuta las pruebas usando tsx para importar TypeScript
 npm.cmd run build     # Comprueba los tipos y después compila con Vite
 ```
 

@@ -81,5 +81,33 @@ export function useAuth() {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const controller = new AbortController();
+    let busy = false;
+    // Refrescar los permisos no muestra el spinner de inicio ni recarga la página.
+    async function refresh() {
+      if (busy || controller.signal.aborted) return;
+      busy = true;
+      try {
+        const current = await restoreSession(controller.signal);
+        if (!controller.signal.aborted) setUser(current);
+      } catch {
+        /* Un 401 ya cierra la sesión; una caída de red no borra permisos locales. */
+      } finally {
+        busy = false;
+      }
+    }
+    window.addEventListener("focus", refresh);
+    window.addEventListener("nexa:permissions-changed", refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("nexa:permissions-changed", refresh);
+    };
+  }, [user]);
+
   return { user, loading, authError, completeLogin, logout };
 }

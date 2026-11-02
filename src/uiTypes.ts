@@ -19,6 +19,7 @@ export type Icon = ForwardRefExoticComponent<
   IconProps & RefAttributes<SVGSVGElement>
 >;
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  access?: string | string[];
   icon?: Icon;
   variant?: string;
 };
@@ -52,6 +53,7 @@ export type ModalModel =
   | { kind: "purchase" };
 export type Setter<T> = Dispatch<SetStateAction<T>>;
 export interface AppContext {
+  can: (code: string) => boolean;
   data: CommercialState;
   user: User;
   warehouse: string;

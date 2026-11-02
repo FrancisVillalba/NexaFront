@@ -11,3 +11,24 @@
 .image-brand{padding:23px 22px}.image-brand>.logo-window{display:block;width:180px;height:48px;background:#fff;border-radius:7px;overflow:hidden;position:relative;flex-shrink:0}.logo-window>img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 48%}.login-story>.image-brand{padding:25px 10px}.login-story>.image-brand>.logo-window{width:205px;height:55px}.brand.dark.image-brand{padding:0;margin-bottom:17px}.brand.dark.image-brand>.logo-window{width:160px;height:42px;border-radius:0}.collapsed .sidebar .image-brand{padding:22px 16px}.collapsed .sidebar .image-brand>.logo-window{display:block;width:42px;height:42px;border-radius:7px}.collapsed .sidebar .image-brand .logo-window>img{position:absolute;width:180px;max-width:none;height:auto;left:-11px;top:-30px;object-fit:initial}@media(max-width:1000px){.sidebar .image-brand{padding:22px 17px}.sidebar .image-brand>.logo-window{display:block;width:42px;height:42px}.sidebar .image-brand .logo-window>img{position:absolute;width:180px;max-width:none;height:auto;left:-11px;top:-30px;object-fit:initial}}
 @media(max-width:650px){.login-story{display:block;background:#fff;padding:22px 26px 0}.login-story>.image-brand{padding:0}.login-story>.image-brand>.logo-window{width:165px;height:44px}.login-story .login-pitch,.login-story>small{display:none}.login-form{min-height:calc(100dvh - 66px);padding-top:24px}}
 @media(max-width:650px){.login{grid-template-columns:minmax(0,1fr)}.login-form{min-width:0}.login-card{width:min(380px,100%)}}
+
+/* Las acciones de Personas comparten el formato compacto de Editar y el mismo ancho. */
+.row-actions .people-action,.row-actions .profile-action{width:70px;height:29px;flex:none}
+
+/* Submenú administrativo: reutiliza los botones del lateral y conserva el modo compacto. */
+.sidebar nav .administration-chevron{flex:none;transition:transform .18s ease}
+.sidebar nav .administration-chevron.open{transform:rotate(180deg)}
+.sidebar nav .administration-submenu{margin:3px 0 8px 22px;padding-left:8px;border-left:1px solid #ffffff24}
+.sidebar nav .administration-submenu[hidden]{display:none}
+.sidebar nav .administration-submenu button{height:39px;font-size:12px;padding-left:11px}
+.collapsed .sidebar nav .administration-chevron{display:none}
+.collapsed .sidebar nav .administration-submenu{margin-left:0;padding-left:0;border-left:0}
+.collapsed .sidebar nav .administration-submenu button{padding:0}
+@media(max-width:1000px){.sidebar nav .administration-chevron{display:none}.sidebar nav .administration-submenu{margin-left:0;padding-left:0;border-left:0}.sidebar nav .administration-submenu button{padding:0}}
+
+/* El asterisco identifica campos obligatorios sin mostrar un error antes de escribir. */
+.required-mark{color:#c62828;font-weight:700;margin-inline-start:3px}
+
+.row-actions .user-action{width:76px;height:29px;flex:none}
+
+.access-option{display:inline-flex;align-items:center;gap:7px;font-size:12px;cursor:pointer}.access-option input{width:17px;height:17px;accent-color:#0784f7}.access-options{display:flex;gap:14px;flex-wrap:wrap}.access-matrix td{vertical-align:middle}.access-matrix .access-option:has(input:disabled){cursor:default;opacity:.65}

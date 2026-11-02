@@ -15,7 +15,12 @@ export async function api<T>(
   {
     authenticated = true,
     signal,
-  }: { authenticated?: boolean; signal?: AbortSignal } = {},
+    method,
+  }: {
+    authenticated?: boolean;
+    signal?: AbortSignal;
+    method?: "GET" | "POST" | "PUT" | "PATCH";
+  } = {},
 ): Promise<T> {
   // El token solo se envía a la API del mismo origen; el proxy se encarga de NexaBack.
   if (!url.startsWith("/api/")) throw new Error("Dirección de API inválida.");
@@ -30,7 +35,8 @@ export async function api<T>(
   let response;
   try {
     response = await fetch(url, {
-      method: body === undefined ? "GET" : "POST",
+      // Mantener GET/POST por defecto conserva el login; edición y estado indican PUT/PATCH.
+      method: method ?? (body === undefined ? "GET" : "POST"),
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: "omit",
@@ -57,6 +63,8 @@ export async function api<T>(
     result = null;
   }
   if (!response.ok) {
+    if (response.status === 403 && authenticated)
+      window.dispatchEvent(new Event("nexa:permissions-changed"));
     if (
       response.status === 401 &&
       authenticated &&

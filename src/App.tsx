@@ -16,7 +16,6 @@ import type {
   Invoice,
   CartItem,
   PurchaseItem,
-  UserDirectory,
 } from "./types";
 import React, {
   useState,
@@ -27,9 +26,14 @@ import React, {
 } from "react";
 import * as I from "./icons";
 import { Login } from "./features/auth/Login";
+import { People } from "./features/people/People";
+import { Profiles } from "./features/profiles/Profiles";
 import { Brand, IconButton, Field, Modal } from "./components/ui";
 import { useAuth } from "./features/auth/useAuth";
-import { loadUserDirectory, createUser } from "./services/usersService";
+import { Users } from "./features/users/Users";
+import { Permissions } from "./features/permissions/Permissions";
+import { hasAccess, routeAccess } from "./services/accessControl";
+import { AccessContext } from "./services/AccessContext";
 import {
   ResponsiveContainer,
   BarChart,
@@ -84,40 +88,38 @@ const STORAGE = "ferro-demo-v1",
   ];
 const navigation: [string, string, Icon][] = [
   ["inicio", "Inicio", I.Home],
+  ["productos", "Productos", I.Box],
   ["inventario", "Inventario", I.Package],
   ["movimientos", "Movimientos de stock", I.ArrowsExchange],
   ["compras", "Compras", I.ShoppingCart],
   ["ventas", "Ventas y facturación", I.Receipt],
   ["presupuestos", "Presupuestos", I.FileText],
-  ["caja", "Caja", I.Cash],
   ["clientes", "Clientes", I.Users],
   ["proveedores", "Proveedores", I.Truck],
   ["reportes", "Reportes", I.ChartBar],
-  ["usuarios", "Usuarios y permisos", I.ShieldCheck],
   ["configuracion", "Configuración", I.Settings],
 ];
-const roleRoutes: Record<string, string[]> = {
-  Administrador: navigation.map((n) => n[0]),
-  Vendedor: [
-    "inicio",
-    "inventario",
-    "ventas",
-    "presupuestos",
-    "caja",
-    "clientes",
-  ],
-  Depósito: ["inicio", "inventario", "movimientos", "compras", "proveedores"],
-};
+// Los accesos administrativos se agrupan visualmente, pero cada uno conserva su ruta.
+const administrationNavigation: [string, string, Icon][] = [
+  ["personas", "Personas", I.User],
+  ["usuarios", "Usuarios", I.Users],
+  ["perfiles", "Perfiles", I.ShieldCheck],
+  ["permisos", "Permisos", I.Lock],
+];
 const cn = (...a: (string | false | undefined)[]) =>
   a.filter(Boolean).join(" ");
 
 function Button({
+  access,
   children,
   icon: Icon,
   variant = "",
   className = "",
   ...props
 }: ButtonProps) {
+  const can = React.useContext(AccessContext);
+  if (access && !(Array.isArray(access) ? access : [access]).every(can))
+    return null;
   return (
     <button className={cn("btn", variant, className)} {...props}>
       {Icon && <Icon size={18} />} {children}
@@ -393,7 +395,11 @@ function FormModal({
           {model.fields
             .filter((f) => !f.when || f.when(values))
             .map((f) => (
-              <Field key={f.name} label={f.label}>
+              <Field
+                key={f.name}
+                label={f.label}
+                required={f.required !== false}
+              >
                 {f.options ? (
                   <select
                     required={f.required !== false}
@@ -450,6 +456,7 @@ function FormModal({
 
 export function App() {
   const { user, loading, authError, completeLogin, logout } = useAuth();
+  const can = (code: string) => hasAccess(user, code);
   const [data, setData] = useState<CommercialState>(() => {
       try {
         return JSON.parse(localStorage.getItem(STORAGE) || "null") || seed();
@@ -462,6 +469,8 @@ export function App() {
     [modal, setModal] = useState<ModalModel | null>(null),
     [toast, setToast] = useState<{ text: string; error: boolean } | null>(null),
     [collapsed, setCollapsed] = useState(false),
+    // Abrir el grupo no navega: solo muestra u oculta los cuatro accesos hijos.
+    [administrationOpen, setAdministrationOpen] = useState(false),
     [topMenu, setTopMenu] = useState(""),
     [globalSearch, setGlobalSearch] = useState(""),
     [inventoryQuery, setInventoryQuery] = useState(""),
@@ -484,21 +493,36 @@ export function App() {
       setCart([]);
       setRoute("inicio");
       setTopMenu("");
+      setAdministrationOpen(false);
     }
   }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    if (!hasAccess(user, routeAccess(route))) {
+      const first =
+        [...navigation, ...administrationNavigation].find(([id]) =>
+          hasAccess(user, routeAccess(id)),
+        )?.[0] ?? "sin-accesos";
+      if (first !== route) setRoute(first);
+      setModal(null);
+      setCart([]);
+    }
+  }, [user, route]);
+  useEffect(() => {
+    setModal(null);
+  }, [user?.accesses.join("|")]);
   function notify(text: string, error = false) {
     setToast({ text, error });
   }
   function go(page: string) {
-    const allowed = roleRoutes[user!.role] || ["inicio"];
-    if (
-      !allowed.includes(page) &&
-      !(page === "nueva-venta" && allowed.includes("ventas"))
-    ) {
+    const permitted = can(routeAccess(page));
+    if (!permitted) {
       notify("Este módulo requiere otro perfil de acceso.", true);
       return;
     }
     setRoute(page);
+    if (administrationNavigation.some(([id]) => id === page))
+      setAdministrationOpen(true);
     setTopMenu("");
     if (window.innerWidth < 900) setCollapsed(true);
     window.scrollTo(0, 0);
@@ -537,11 +561,8 @@ export function App() {
     setModal({ kind: "confirm", title, text, onConfirm });
   }
   function productForm(p?: Product) {
-    if (user!.role === "Vendedor") {
-      notify(
-        "La edición de inventario requiere el perfil de depósito o administrador.",
-        true,
-      );
+    if (!can(p ? "productos.editar" : "productos.crear")) {
+      notify("No tenés permiso para crear o editar productos.", true);
       return;
     }
     const fields: FormField[] = [
@@ -636,11 +657,8 @@ export function App() {
     );
   }
   function movementForm(p?: Product, type = "Entrada") {
-    if (user!.role === "Vendedor") {
-      notify(
-        "El registro de stock requiere el perfil de depósito o administrador.",
-        true,
-      );
+    if (!can("movimientos.crear")) {
+      notify("No tenés permiso para registrar movimientos de stock.", true);
       return;
     }
     form(
@@ -699,6 +717,10 @@ export function App() {
     );
   }
   function contactForm(type: string, item?: Contact) {
+    if (!can(`${type}.${item ? "editar" : "crear"}`)) {
+      notify("No tenés permiso para esta operación.", true);
+      return;
+    }
     const clients = type === "clientes",
       key = clients ? "clients" : "suppliers";
     form(
@@ -764,6 +786,10 @@ export function App() {
     setModal({ kind: "invoice", id: inv.id });
   }
   function pay(inv: Invoice) {
+    if (!can("ventas.cobrar")) {
+      notify("No tenés permiso para registrar cobros.", true);
+      return;
+    }
     form(
       "Registrar cobro",
       [
@@ -796,6 +822,7 @@ export function App() {
     go("nueva-venta");
   }
   const ctx = {
+    can,
     data,
     user,
     warehouse,
@@ -838,243 +865,360 @@ export function App() {
         initialError={authError}
         onLogin={(u) => {
           completeLogin(u);
-          setRoute("inicio");
+          setRoute(
+            [...navigation, ...administrationNavigation].find(([id]) =>
+              hasAccess(u, routeAccess(id)),
+            )?.[0] ?? "sin-accesos",
+          );
         }}
       />
     );
-  const allowed = roleRoutes[user!.role] || ["inicio"],
+  const allowed = [...navigation, ...administrationNavigation]
+      .filter(([id]) => can(routeAccess(id)))
+      .map(([id]) => id),
     current =
-      navigation.find((n) => n[0] === route)?.[1] ||
-      (route === "nueva-venta" ? "Nueva venta" : "Inicio");
+      [...navigation, ...administrationNavigation].find(
+        (n) => n[0] === route,
+      )?.[1] ||
+      (route === "nueva-venta"
+        ? "Nueva venta"
+        : route === "nuevo-presupuesto"
+          ? "Nuevo presupuesto"
+          : "Inicio");
   return (
-    <Context.Provider value={{ ...ctx, user }}>
-      <div className={cn("shell", collapsed && "collapsed")}>
-        <aside className="sidebar">
-          <Brand />
-          <div className="nav-caption">ESPACIO DE TRABAJO</div>
-          <nav>
-            {navigation
-              .filter((n) => allowed.includes(n[0]))
-              .map(([id, label, Icon]) => (
-                <button
-                  key={id}
-                  aria-label={label}
-                  className={cn(
-                    (route === id ||
-                      (id === "ventas" && route === "nueva-venta")) &&
-                      "selected",
-                  )}
-                  onClick={() => go(id)}
-                  title={collapsed ? label : undefined}
-                >
-                  <Icon size={21} />
-                  <span>{label}</span>
-                  {id === "inventario" && <small>{data.products.length}</small>}
-                </button>
-              ))}
-          </nav>
-          <div className="sidebar-bottom">
-            <span className="demo-dot" />
-            <div>
-              <b>Modo demostración</b>
-              <small>Tus cambios se guardan aquí</small>
-            </div>
-          </div>
-        </aside>
-        <div className="main-shell">
-          <header className="topbar">
-            <IconButton
-              icon={I.Menu}
-              label="Mostrar u ocultar menú"
-              onClick={() => setCollapsed(!collapsed)}
-            />
-            <span className="breadcrumb">
-              Mi negocio <I.ChevronRight size={13} /> <b>{current}</b>
-            </span>
-            <form
-              className="global-search"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setInventoryQuery(globalSearch);
-                go("inventario");
-              }}
-            >
-              <I.Search size={17} />
-              <input
-                aria-label="Buscar en el inventario"
-                placeholder="Buscar producto o código…"
-                value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
-              />
-              <kbd>↵</kbd>
-            </form>
-            <label className="warehouse">
-              <I.BuildingStore size={18} />
-              <select
-                aria-label="Depósito activo"
-                value={warehouse}
-                onChange={(e) => setWarehouse(e.target.value)}
-              >
-                {warehouses.map((w) => (
-                  <option key={w}>{w}</option>
-                ))}
-              </select>
-            </label>
-            <div className="top-pop">
-              <button
-                className="notification icon-btn"
-                aria-label="Notificaciones de stock"
-                onClick={() => setTopMenu(topMenu === "alerts" ? "" : "alerts")}
-              >
-                <I.Bell size={22} />
-                {data.products.some((p) => stock(p, warehouse) <= p.min) && (
-                  <span />
-                )}
-              </button>
-              {topMenu === "alerts" && (
-                <div className="dropdown">
-                  <b>Atención al inventario</b>
-                  <p>
-                    {
-                      data.products.filter((p) => stock(p, warehouse) <= p.min)
-                        .length
-                    }{" "}
-                    productos necesitan reposición en {warehouse}.
-                  </p>
-                  <Button
-                    variant="text"
-                    onClick={() => {
-                      setInventoryFilter("Stock bajo");
-                      go("inventario");
-                    }}
+    <AccessContext.Provider value={can}>
+      <Context.Provider value={{ ...ctx, user }}>
+        <div className={cn("shell", collapsed && "collapsed")}>
+          <aside className="sidebar">
+            <Brand />
+            <div className="nav-caption">ESPACIO DE TRABAJO</div>
+            <nav>
+              {navigation
+                .filter(
+                  (n) => allowed.includes(n[0]) && n[0] !== "configuracion",
+                )
+                .map(([id, label, Icon]) => (
+                  <button
+                    key={id}
+                    aria-label={label}
+                    className={cn(
+                      (route === id ||
+                        (id === "ventas" && route === "nueva-venta") ||
+                        (id === "presupuestos" &&
+                          route === "nuevo-presupuesto")) &&
+                        "selected",
+                    )}
+                    onClick={() => go(id)}
+                    title={collapsed ? label : undefined}
                   >
-                    Revisar existencias <I.ArrowRight size={16} />
-                  </Button>
+                    <Icon size={21} />
+                    <span>{label}</span>
+                    {id === "inventario" && (
+                      <small>{data.products.length}</small>
+                    )}
+                  </button>
+                ))}
+              {administrationNavigation.some(([id]) =>
+                allowed.includes(id),
+              ) && (
+                <div className="administration-nav">
+                  <button
+                    type="button"
+                    aria-label="Administración"
+                    aria-expanded={administrationOpen}
+                    aria-controls="administration-submenu"
+                    title="Administración"
+                    className={cn(
+                      administrationNavigation.some(([id]) => id === route) &&
+                        "selected",
+                    )}
+                    onClick={() => setAdministrationOpen((open) => !open)}
+                  >
+                    <I.ShieldCheck size={21} />
+                    <span>Administración</span>
+                    <I.ChevronDown
+                      size={15}
+                      className={cn(
+                        "administration-chevron",
+                        administrationOpen && "open",
+                      )}
+                    />
+                  </button>
+                  <div
+                    id="administration-submenu"
+                    className="administration-submenu"
+                    hidden={!administrationOpen}
+                  >
+                    {administrationNavigation
+                      .filter(([id]) => allowed.includes(id))
+                      .map(([id, label, Icon]) => (
+                        <button
+                          type="button"
+                          key={id}
+                          title={label}
+                          aria-label={label}
+                          aria-current={route === id ? "page" : undefined}
+                          className={cn(route === id && "selected")}
+                          onClick={() => go(id)}
+                        >
+                          <Icon size={18} />
+                          <span>{label}</span>
+                        </button>
+                      ))}
+                  </div>
                 </div>
               )}
-            </div>
-            <div className="top-pop">
-              <button
-                className="profile"
-                onClick={() =>
-                  setTopMenu(topMenu === "profile" ? "" : "profile")
-                }
-              >
-                <span className="avatar">{user!.name[0]}</span>
-                <span>
-                  <b>{user!.name.split(" ")[0]}</b>
-                  <small>{user!.role}</small>
-                </span>
-                <I.ChevronDown size={14} />
-              </button>
-              {topMenu === "profile" && (
-                <div className="dropdown">
-                  <b>{user!.name}</b>
-                  <p>{user.username}</p>
-                  <Button variant="secondary" icon={I.Logout} onClick={logout}>
-                    Cerrar sesión
-                  </Button>
-                </div>
+              {allowed.includes("configuracion") && (
+                <button
+                  type="button"
+                  aria-label="Configuración"
+                  title={collapsed ? "Configuración" : undefined}
+                  className={cn(route === "configuracion" && "selected")}
+                  onClick={() => go("configuracion")}
+                >
+                  <I.Settings size={21} />
+                  <span>Configuración</span>
+                </button>
               )}
+            </nav>
+            <div className="sidebar-bottom">
+              <span className="demo-dot" />
+              <div>
+                <b>Modo demostración</b>
+                <small>Tus cambios se guardan aquí</small>
+              </div>
             </div>
-          </header>
-          <main className="content">
-            {route === "inicio" ? (
-              <Dashboard />
-            ) : route === "inventario" ? (
-              <Inventory />
-            ) : route === "movimientos" ? (
-              <Movements />
-            ) : route === "ventas" ? (
-              <Sales />
-            ) : route === "nueva-venta" ? (
-              <SaleEditor />
-            ) : route === "compras" ? (
-              <Purchases />
-            ) : route === "presupuestos" ? (
-              <Quotes />
-            ) : route === "caja" ? (
-              <Cash />
-            ) : route === "clientes" || route === "proveedores" ? (
-              <Contacts key={route} type={route} />
-            ) : route === "reportes" ? (
-              <Reports />
-            ) : route === "usuarios" ? (
-              <Users />
-            ) : (
-              <Settings />
-            )}
-          </main>
-          <footer>
-            <span>
-              <b>NEXA</b> · {data.settings.company}
-            </span>
-            <span>
-              Datos de ejemplo <span className="footer-sep">|</span> 26 oct.
-              2026
-            </span>
-          </footer>
-        </div>
-        {toast && (
-          <div
-            role="status"
-            className={cn("toast", toast.error && "toast-error")}
-          >
-            {toast.error ? (
-              <I.AlertTriangle size={20} />
-            ) : (
-              <I.CircleCheck size={20} />
-            )}
-            <span>{toast.text}</span>
-            <IconButton
-              icon={I.X}
-              label="Cerrar mensaje"
-              onClick={() => setToast(null)}
-            />
-          </div>
-        )}
-        {modal?.kind === "form" && (
-          <FormModal
-            key={modal.title}
-            model={modal}
-            onClose={() => setModal(null)}
-          />
-        )}{" "}
-        {modal?.kind === "confirm" && (
-          <Modal title={modal.title} onClose={() => setModal(null)}>
-            <p className="confirm-text">{modal.text}</p>
-            <div className="modal-actions">
-              <Button variant="secondary" onClick={() => setModal(null)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  try {
-                    modal.onConfirm();
-                    setModal(null);
-                  } catch (e) {
-                    notify(
-                      e instanceof Error
-                        ? e.message
-                        : "No se pudo completar la operación.",
-                      true,
-                    );
-                  }
+          </aside>
+          <div className="main-shell">
+            <header className="topbar">
+              <IconButton
+                icon={I.Menu}
+                label="Mostrar u ocultar menú"
+                onClick={() => setCollapsed(!collapsed)}
+              />
+              <span className="breadcrumb">
+                Mi negocio <I.ChevronRight size={13} />
+                {administrationNavigation.some(([id]) => id === route) && (
+                  <>
+                    Administración <I.ChevronRight size={13} />
+                  </>
+                )}
+                <b>{current}</b>
+              </span>
+              <form
+                style={{
+                  display:
+                    can("inventario.ver") || can("productos.ver")
+                      ? undefined
+                      : "none",
+                }}
+                className="global-search"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setInventoryQuery(globalSearch);
+                  go(can("inventario.ver") ? "inventario" : "productos");
                 }}
               >
-                Confirmar
-              </Button>
+                <I.Search size={17} />
+                <input
+                  aria-label="Buscar en el inventario"
+                  placeholder="Buscar producto o código…"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                />
+                <kbd>↵</kbd>
+              </form>
+              <label className="warehouse">
+                <I.BuildingStore size={18} />
+                <select
+                  aria-label="Depósito activo"
+                  value={warehouse}
+                  onChange={(e) => setWarehouse(e.target.value)}
+                >
+                  {warehouses.map((w) => (
+                    <option key={w}>{w}</option>
+                  ))}
+                </select>
+              </label>
+              <div
+                className="top-pop"
+                style={{ display: can("inventario.ver") ? undefined : "none" }}
+              >
+                <button
+                  className="notification icon-btn"
+                  aria-label="Notificaciones de stock"
+                  onClick={() =>
+                    setTopMenu(topMenu === "alerts" ? "" : "alerts")
+                  }
+                >
+                  <I.Bell size={22} />
+                  {data.products.some((p) => stock(p, warehouse) <= p.min) && (
+                    <span />
+                  )}
+                </button>
+                {topMenu === "alerts" && (
+                  <div className="dropdown">
+                    <b>Atención al inventario</b>
+                    <p>
+                      {
+                        data.products.filter(
+                          (p) => stock(p, warehouse) <= p.min,
+                        ).length
+                      }{" "}
+                      productos necesitan reposición en {warehouse}.
+                    </p>
+                    <Button
+                      variant="text"
+                      onClick={() => {
+                        setInventoryFilter("Stock bajo");
+                        go("inventario");
+                      }}
+                    >
+                      Revisar existencias <I.ArrowRight size={16} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="top-pop">
+                <button
+                  className="profile"
+                  onClick={() =>
+                    setTopMenu(topMenu === "profile" ? "" : "profile")
+                  }
+                >
+                  <span className="avatar">{user!.name[0]}</span>
+                  <span>
+                    <b>{user!.name.split(" ")[0]}</b>
+                    <small>{user!.role}</small>
+                  </span>
+                  <I.ChevronDown size={14} />
+                </button>
+                {topMenu === "profile" && (
+                  <div className="dropdown">
+                    <b>{user!.name}</b>
+                    <p>{user.username}</p>
+                    <Button
+                      variant="secondary"
+                      icon={I.Logout}
+                      onClick={logout}
+                    >
+                      Cerrar sesión
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </header>
+            <main className="content">
+              {!can(routeAccess(route)) ? (
+                <Panel title="Sin accesos habilitados">
+                  <p>
+                    Tu perfil no tiene acceso a este módulo. Consultá al
+                    administrador.
+                  </p>
+                </Panel>
+              ) : route === "inicio" ? (
+                <Dashboard />
+              ) : route === "inventario" || route === "productos" ? (
+                <Inventory
+                  title={route === "productos" ? "Productos" : "Inventario"}
+                />
+              ) : route === "movimientos" ? (
+                <Movements />
+              ) : route === "ventas" ? (
+                <Sales />
+              ) : route === "nueva-venta" || route === "nuevo-presupuesto" ? (
+                <SaleEditor quoteOnly={route === "nuevo-presupuesto"} />
+              ) : route === "compras" ? (
+                <Purchases />
+              ) : route === "presupuestos" ? (
+                <Quotes />
+              ) : route === "clientes" || route === "proveedores" ? (
+                <Contacts key={route} type={route} />
+              ) : route === "reportes" ? (
+                <Reports />
+              ) : route === "usuarios" ? (
+                <Users currentUserId={user.id} />
+              ) : route === "personas" ? (
+                <People />
+              ) : route === "perfiles" ? (
+                <Profiles />
+              ) : route === "permisos" ? (
+                <Permissions />
+              ) : (
+                <Settings />
+              )}
+            </main>
+            <footer>
+              <span>
+                <b>NEXA</b> · {data.settings.company}
+              </span>
+              <span>
+                Datos de ejemplo <span className="footer-sep">|</span> 26 oct.
+                2026
+              </span>
+            </footer>
+          </div>
+          {toast && (
+            <div
+              role="status"
+              className={cn("toast", toast.error && "toast-error")}
+            >
+              {toast.error ? (
+                <I.AlertTriangle size={20} />
+              ) : (
+                <I.CircleCheck size={20} />
+              )}
+              <span>{toast.text}</span>
+              <IconButton
+                icon={I.X}
+                label="Cerrar mensaje"
+                onClick={() => setToast(null)}
+              />
             </div>
-          </Modal>
-        )}
-        {modal?.kind === "invoice" && <InvoiceModal id={modal.id} />}{" "}
-        {modal?.kind === "purchase" && <PurchaseModal />}
-        {modal?.kind === "purchase-detail" && (
-          <PurchaseDetail id={modal.id} />
-        )}{" "}
-        {modal?.kind === "statement" && <Statement id={modal.id} />}
-      </div>
-    </Context.Provider>
+          )}
+          {modal?.kind === "form" && (
+            <FormModal
+              key={modal.title}
+              model={modal}
+              onClose={() => setModal(null)}
+            />
+          )}{" "}
+          {modal?.kind === "confirm" && (
+            <Modal title={modal.title} onClose={() => setModal(null)}>
+              <p className="confirm-text">{modal.text}</p>
+              <div className="modal-actions">
+                <Button variant="secondary" onClick={() => setModal(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => {
+                    try {
+                      modal.onConfirm();
+                      setModal(null);
+                    } catch (e) {
+                      notify(
+                        e instanceof Error
+                          ? e.message
+                          : "No se pudo completar la operación.",
+                        true,
+                      );
+                    }
+                  }}
+                >
+                  Confirmar
+                </Button>
+              </div>
+            </Modal>
+          )}
+          {modal?.kind === "invoice" && <InvoiceModal id={modal.id} />}{" "}
+          {modal?.kind === "purchase" && <PurchaseModal />}
+          {modal?.kind === "purchase-detail" && (
+            <PurchaseDetail id={modal.id} />
+          )}{" "}
+          {modal?.kind === "statement" && <Statement id={modal.id} />}
+        </div>
+      </Context.Provider>
+    </AccessContext.Provider>
   );
 }
 function SalesChart({ invoices }: { invoices: Invoice[] }) {
@@ -1212,7 +1356,12 @@ function Dashboard() {
         title="Resumen del negocio"
         subtitle="Hoy es lunes, 26 de octubre de 2026"
       >
-        <Button icon={I.Plus} variant="green" onClick={openSale}>
+        <Button
+          access="ventas.crear"
+          icon={I.Plus}
+          variant="green"
+          onClick={openSale}
+        >
           Nueva venta
         </Button>
       </PageTitle>
@@ -1293,6 +1442,7 @@ function Dashboard() {
                 </td>
                 <td>
                   <Button
+                    access="movimientos.crear"
                     variant="outline small"
                     icon={I.Plus}
                     onClick={() => movementForm(p)}
@@ -1372,7 +1522,7 @@ function Dashboard() {
     </>
   );
 }
-function Inventory() {
+function Inventory({ title }: { title: string }) {
   const {
     data,
     warehouse,
@@ -1407,10 +1557,7 @@ function Inventory() {
   const rows = filtered.slice((page - 1) * 7, page * 7);
   return (
     <>
-      <PageTitle
-        title="Inventario"
-        subtitle="Controlá tus productos y existencias."
-      >
+      <PageTitle title={title} subtitle="Controlá tus productos y existencias.">
         <Button
           variant="secondary"
           icon={I.Download}
@@ -1444,7 +1591,11 @@ function Inventory() {
         >
           Exportar
         </Button>
-        <Button icon={I.Plus} onClick={() => productForm()}>
+        <Button
+          access="productos.crear"
+          icon={I.Plus}
+          onClick={() => productForm()}
+        >
           Nuevo producto
         </Button>
       </PageTitle>
@@ -1558,6 +1709,7 @@ function Inventory() {
                   </td>
                   <td>
                     <IconButton
+                      access="productos.editar"
                       icon={I.Edit}
                       label={"Editar " + x.name}
                       onClick={(e) => {
@@ -1595,6 +1747,7 @@ function Inventory() {
         </div>
         <aside className="product-detail">
           <Button
+            access="movimientos.crear"
             variant="secondary"
             icon={I.ArrowsExchange}
             onClick={() => movementForm(p)}
@@ -1637,7 +1790,7 @@ function Inventory() {
             </dl>
             <div className="detail-subtitle">
               <b>Movimientos recientes</b>
-              <Button variant="text" onClick={() => go("movimientos")}>
+              <Button access="movimientos.ver" variant="text" onClick={() => go("movimientos")}>
                 Ver todos
               </Button>
             </div>
@@ -1673,6 +1826,7 @@ function Inventory() {
               </p>
             )}
             <Button
+              access="productos.editar"
               variant="outline full"
               icon={I.Edit}
               onClick={() => productForm(p)}
@@ -1708,7 +1862,11 @@ function Movements() {
         title="Movimientos de stock"
         subtitle="Cada entrada, salida y transferencia, en un solo historial."
       >
-        <Button icon={I.ArrowsExchange} onClick={() => movementForm()}>
+        <Button
+          access="movimientos.crear"
+          icon={I.ArrowsExchange}
+          onClick={() => movementForm()}
+        >
           Registrar movimiento
         </Button>
       </PageTitle>
@@ -1839,7 +1997,12 @@ function Sales() {
         title="Ventas y facturación"
         subtitle="Tus comprobantes, cobros y cuentas pendientes."
       >
-        <Button icon={I.Plus} variant="green" onClick={openSale}>
+        <Button
+          access="ventas.crear"
+          icon={I.Plus}
+          variant="green"
+          onClick={openSale}
+        >
           Nueva venta
         </Button>
       </PageTitle>
@@ -1945,12 +2108,17 @@ function Sales() {
               <td>
                 <div className="row-actions">
                   <IconButton
+                    access="ventas.ver"
                     icon={I.Eye}
                     label={"Ver comprobante " + x.number}
                     onClick={() => viewInvoice(x)}
                   />
                   {x.total > x.paid && x.state !== "Anulada" && (
-                    <Button variant="outline small" onClick={() => pay(x)}>
+                    <Button
+                      access="ventas.cobrar"
+                      variant="outline small"
+                      onClick={() => pay(x)}
+                    >
                       Cobrar
                     </Button>
                   )}
@@ -1963,7 +2131,8 @@ function Sales() {
     </>
   );
 }
-function SaleEditor() {
+function SaleEditor({ quoteOnly }: { quoteOnly: boolean }) {
+  const { can } = useApp();
   const {
     data,
     user,
@@ -2017,6 +2186,7 @@ function SaleEditor() {
     setQ("");
   }
   function saveQuote() {
+    if (!can("presupuestos.crear")) return;
     if (!cart.length) {
       setError("Agregá productos antes de guardar.");
       return;
@@ -2038,6 +2208,7 @@ function SaleEditor() {
     go("presupuestos");
   }
   function finish() {
+    if (!can("ventas.crear") || quoteOnly) return;
     setError("");
     try {
       const result = checkout(
@@ -2064,15 +2235,15 @@ function SaleEditor() {
   return (
     <>
       <PageTitle
-        title="Nueva venta"
+        title={quoteOnly ? "Nuevo presupuesto" : "Nueva venta"}
         subtitle="Registrá la venta y actualizá el stock en un solo paso."
       >
         <Button
           variant="secondary"
           icon={I.ArrowLeft}
-          onClick={() => go("ventas")}
+          onClick={() => go(quoteOnly ? "presupuestos" : "ventas")}
         >
-          Volver a ventas
+          {quoteOnly ? "Volver a presupuestos" : "Volver a ventas"}
         </Button>
       </PageTitle>
       <div className="pos-layout">
@@ -2338,17 +2509,21 @@ function SaleEditor() {
               {error}
             </div>
           )}
+          {!quoteOnly && (
+            <Button
+              access="ventas.crear"
+              variant="green full"
+              icon={I.Receipt}
+              disabled={!cart.length}
+              onClick={finish}
+            >
+              {payment === "Crédito"
+                ? "Emitir a crédito"
+                : "Cobrar y emitir comprobante"}
+            </Button>
+          )}
           <Button
-            variant="green full"
-            icon={I.Receipt}
-            disabled={!cart.length}
-            onClick={finish}
-          >
-            {payment === "Crédito"
-              ? "Emitir a crédito"
-              : "Cobrar y emitir comprobante"}
-          </Button>
-          <Button
+            access="presupuestos.crear"
             variant="secondary full"
             icon={I.FileText}
             disabled={!cart.length}
@@ -2362,6 +2537,7 @@ function SaleEditor() {
   );
 }
 function InvoiceModal({ id }: { id: string }) {
+  const { can } = useApp();
   const { data, user, setModal, pay, confirm, act } = useApp();
   const inv = requireRecord(
       data.invoices.find((x) => x.id === id),
@@ -2443,12 +2619,13 @@ function InvoiceModal({ id }: { id: string }) {
           Imprimir / PDF
         </Button>
         {inv.state !== "Anulada" && inv.total > inv.paid && (
-          <Button icon={I.Cash} onClick={() => pay(inv)}>
+          <Button access="ventas.cobrar" icon={I.Cash} onClick={() => pay(inv)}>
             Registrar cobro
           </Button>
         )}
-        {inv.state !== "Anulada" && user!.role !== "Depósito" && (
+        {inv.state !== "Anulada" && can("ventas.anular") && (
           <Button
+            access="ventas.anular"
             variant="danger-outline"
             icon={I.ArrowBackUp}
             onClick={() =>
@@ -2492,7 +2669,11 @@ function Purchases() {
         title="Compras"
         subtitle="Planificá la reposición y recibí mercadería en tu depósito."
       >
-        <Button icon={I.Plus} onClick={() => setModal({ kind: "purchase" })}>
+        <Button
+          access="compras.crear"
+          icon={I.Plus}
+          onClick={() => setModal({ kind: "purchase" })}
+        >
           Nueva orden de compra
         </Button>
       </PageTitle>
@@ -2562,6 +2743,7 @@ function Purchases() {
               <td>
                 {x.state === "Pendiente" ? (
                   <Button
+                    access="compras.recibir"
                     variant="outline small"
                     icon={I.Truck}
                     onClick={() =>
@@ -2709,6 +2891,7 @@ function PurchaseModal() {
           Cancelar
         </Button>
         <Button
+          access="compras.crear"
           disabled={!items.length}
           onClick={() => {
             const s = structuredClone(data);
@@ -2763,6 +2946,7 @@ function PurchaseDetail({ id }: { id: string }) {
       <div className="modal-actions">
         {p.state === "Pendiente" && (
           <Button
+            access="compras.recibir"
             icon={I.Truck}
             onClick={() => {
               if (
@@ -2799,7 +2983,16 @@ function Quotes() {
         title="Presupuestos"
         subtitle="Prepará una propuesta y convertíla en venta cuando tu cliente confirme."
       >
-        <Button icon={I.Plus} onClick={openSale}>
+        <Button
+          access="presupuestos.crear"
+          icon={I.Plus}
+          onClick={() => {
+            setCart([]);
+            setSaleClient("c1");
+            setSaleDiscount(0);
+            go("nuevo-presupuesto");
+          }}
+        >
           Nuevo presupuesto
         </Button>
       </PageTitle>
@@ -2831,6 +3024,7 @@ function Quotes() {
               <td>
                 <div className="row-actions">
                   <Button
+                    access={["presupuestos.convertir", "ventas.crear"]}
                     variant="outline small"
                     onClick={() => {
                       setCart(q.items.map((x) => ({ ...x })));
@@ -2843,6 +3037,7 @@ function Quotes() {
                     Convertir en venta
                   </Button>
                   <IconButton
+                    access="presupuestos.eliminar"
                     icon={I.Trash}
                     label={"Eliminar " + q.number}
                     onClick={() =>
@@ -2893,7 +3088,11 @@ function Contacts({ type }: { type: string }) {
             : "Toda la información de quienes abastecen tu ferretería."
         }
       >
-        <Button icon={I.Plus} onClick={() => contactForm(type)}>
+        <Button
+          access={`${type}.crear`}
+          icon={I.Plus}
+          onClick={() => contactForm(type)}
+        >
           Nuevo {clients ? "cliente" : "proveedor"}
         </Button>
       </PageTitle>
@@ -2952,6 +3151,7 @@ function Contacts({ type }: { type: string }) {
                 <div className="row-actions">
                   {clients && (
                     <Button
+                      access="clientes.cuenta_corriente"
                       variant="text"
                       onClick={() => setModal({ kind: "statement", id: c.id })}
                     >
@@ -2960,6 +3160,7 @@ function Contacts({ type }: { type: string }) {
                   )}
                   {c.id !== "c1" && (
                     <IconButton
+                      access={`${type}.editar`}
                       icon={I.Edit}
                       label={"Editar " + c.name}
                       onClick={() => contactForm(type, c)}
@@ -3013,7 +3214,11 @@ function Statement({ id }: { id: string }) {
             <td>{money(x.total - x.paid)}</td>
             <td>
               {x.total > x.paid && (
-                <Button variant="outline small" onClick={() => pay(x)}>
+                <Button
+                  access="ventas.cobrar"
+                  variant="outline small"
+                  onClick={() => pay(x)}
+                >
                   Cobrar
                 </Button>
               )}
@@ -3285,6 +3490,7 @@ function Reports() {
         subtitle="Información clara para tomar mejores decisiones."
       >
         <Button
+          access="reportes.exportar"
           variant="secondary"
           icon={I.Printer}
           onClick={() => window.print()}
@@ -3292,6 +3498,7 @@ function Reports() {
           Imprimir
         </Button>
         <Button
+          access="reportes.exportar"
           icon={I.Download}
           onClick={() => {
             if (tab === "Inventario")
@@ -3453,170 +3660,6 @@ function Reports() {
     </>
   );
 }
-function Users() {
-  const { form, notify } = useApp();
-  const [directory, setDirectory] = useState<UserDirectory>({
-    users: [],
-    people: [],
-    profiles: [],
-  });
-  const [loading, setLoading] = useState(true),
-    [error, setError] = useState(""),
-    [revision, setRevision] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError("");
-    loadUserDirectory()
-      .then((result) => {
-        if (active) setDirectory(result);
-      })
-      .catch((e) => {
-        if (active)
-          setError(
-            e instanceof Error
-              ? e.message
-              : "No se pudo completar la operación.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [revision]);
-  const available = directory.people.filter(
-    (p) => p.activo && !directory.users.some((u) => u.personId === p.id),
-  );
-  const profiles = directory.profiles.filter((p) => p.activo);
-  function add() {
-    form(
-      "Nuevo usuario",
-      [
-        {
-          name: "personaId",
-          label: "Persona",
-          options: available.map((p) => ({
-            value: p.id,
-            label: p.nombres + " " + p.apellidos,
-          })),
-        },
-        { name: "username", label: "Nombre de usuario" },
-        {
-          name: "perfilId",
-          label: "Perfil",
-          options: profiles.map((p) => ({ value: p.id, label: p.nombre })),
-        },
-        {
-          name: "password",
-          label: "Contraseña inicial",
-          type: "password",
-          minLength: 12,
-        },
-      ],
-      { personaId: available[0]?.id, perfilId: profiles[0]?.id },
-      async (values) => {
-        const created = await createUser(values),
-          person = directory.people.find((p) => p.id === created.personaId),
-          profile = directory.profiles.find((p) => p.id === created.perfilId);
-        setDirectory((current) => ({
-          ...current,
-          users: [
-            ...current.users,
-            {
-              id: created.id,
-              personId: created.personaId,
-              username: created.nombreUsuario,
-              name: person
-                ? person.nombres + " " + person.apellidos
-                : created.nombreUsuario,
-              role: profile?.nombre || "Sin perfil",
-              active: created.activo,
-            },
-          ],
-        }));
-        notify("Usuario creado en NexaBack");
-      },
-      "Seleccioná una persona activa sin cuenta y un perfil activo ya registrados. La contraseña debe tener entre 12 y 128 caracteres.",
-    );
-  }
-  return (
-    <>
-      <PageTitle
-        title="Usuarios y permisos"
-        subtitle="Usuarios, personas y perfiles registrados en NexaBack."
-      >
-        <Button
-          variant="secondary"
-          icon={I.Refresh}
-          onClick={() => setRevision((v) => v + 1)}
-          disabled={loading}
-        >
-          Actualizar
-        </Button>
-        <Button
-          icon={I.Plus}
-          onClick={add}
-          disabled={loading || !available.length || !profiles.length}
-        >
-          Nuevo usuario
-        </Button>
-      </PageTitle>
-      {loading ? (
-        <Panel>
-          <p role="status">Cargando usuarios…</p>
-        </Panel>
-      ) : error ? (
-        <div className="error" role="alert">
-          {error}
-        </div>
-      ) : (
-        <>
-          <div className="role-cards">
-            {directory.profiles.map((p) => (
-              <Panel key={p.id}>
-                <span className="soft-icon blue">
-                  <I.ShieldCheck size={24} />
-                </span>
-                <h3>{p.nombre}</h3>
-                <p>{p.descripcion || "Perfil registrado en el sistema."}</p>
-              </Panel>
-            ))}
-          </div>
-          <Panel title="Equipo de trabajo">
-            <Table
-              headers={["Persona", "Usuario", "Perfil", "Estado"]}
-              empty={!directory.users.length}
-            >
-              {directory.users.map((u) => (
-                <tr key={u.id}>
-                  <td>
-                    <div className="contact-name">
-                      <span className="contact-avatar">{u.name[0]}</span>
-                      <b>{u.name}</b>
-                    </div>
-                  </td>
-                  <td>{u.username}</td>
-                  <td>{u.role}</td>
-                  <td>
-                    <Badge>{u.active ? "Activa" : "Inactiva"}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </Table>
-          </Panel>
-          {(!available.length || !profiles.length) && (
-            <p className="muted">
-              Para crear una cuenta necesitás una persona activa sin usuario y
-              un perfil activo, registrados previamente en el backend.
-            </p>
-          )}
-        </>
-      )}
-    </>
-  );
-}
 function Settings() {
   const { data, commit, confirm } = useApp();
   const [v, setV] = useState({ ...data.settings });
@@ -3689,6 +3732,7 @@ function Settings() {
             usuarios se consultan en NexaBack con PostgreSQL.
           </p>
           <Button
+            access="configuracion.restablecer"
             variant="danger-outline"
             icon={I.Refresh}
             onClick={() =>

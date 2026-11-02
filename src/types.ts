@@ -1,5 +1,6 @@
 // Contratos de NexaBack: equivalen a los DTOs que recibe y devuelve la API C#.
 export interface SessionUserDto {
+  accesos: string[];
   usuarioId: number;
   nombreUsuario: string;
   nombre: string;
@@ -19,6 +20,7 @@ export interface AuthSession {
   expiraEn: string;
 }
 export interface User {
+  accesses: string[];
   id: number;
   username: string;
   name: string;
@@ -58,10 +60,14 @@ export interface UserDto {
 export interface DirectoryUser {
   id: number;
   personId: number;
+  profileId: number;
   username: string;
   name: string;
   role: string;
   active: boolean;
+  personActive: boolean;
+  profileActive: boolean;
+  document: string | null;
 }
 export interface UserDirectory {
   users: DirectoryUser[];
