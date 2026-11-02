@@ -17,6 +17,7 @@ export const navigation: [string, string, Icon][] = [
 ];
 
 export const administrationNavigation: [string, string, Icon][] = [
+  ["depositos", "Depósitos", I.BuildingStore],
   ["personas", "Personas", I.User],
   ["usuarios", "Usuarios", I.Users],
   ["perfiles", "Perfiles", I.ShieldCheck],

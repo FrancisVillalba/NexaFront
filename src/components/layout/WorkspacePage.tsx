@@ -7,6 +7,7 @@ import { Panel } from "../shared/Panel";
 import { Dashboard } from "../../modulos/inicio/Inicio";
 import { InventarioListado } from "../../modulos/inventario/inventarioListado";
 import { ProductosListado } from "../../modulos/productos/productosListado";
+import { DepositosListado } from "../../modulos/depositos/depositosListado";
 import { MovimientosListado } from "../../modulos/movimientos/movimientosListado";
 import { Sales } from "../../modulos/ventas/Ventas";
 import { SaleEditor } from "../../modulos/ventas/ventasEdicion";
@@ -60,6 +61,8 @@ export function WorkspacePage({
         <Contacts key={route} type={route} />
       ) : route === "reportes" ? (
         <Reports />
+      ) : route === "depositos" ? (
+        <DepositosListado />
       ) : route === "usuarios" ? (
         <Users currentUserId={user.id} />
       ) : route === "personas" ? (

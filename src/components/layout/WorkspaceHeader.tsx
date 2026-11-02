@@ -3,6 +3,7 @@ import { IconButton } from "../ui";
 import { useEffect, useState } from "react";
 import { inventarioDepositos } from "../../modulos/inventario/inventarioServicio";
 import type { DepositoDto } from "../../modulos/inventario/inventarioTipos";
+import { depositosEventoCambio } from "../../modulos/depositos/depositosServicio";
 import { Button } from "../shared/Button";
 import { administrationNavigation, rutasDemostracion } from "./navigation";
 import type { AppContext, Setter } from "../../uiTypes";
@@ -51,7 +52,8 @@ export function WorkspaceHeader({ setCollapsed, collapsed, route, current, wareh
     actualizarDepositos();
     // Refleja cambios hechos en la base al volver a la aplicación o cambiar de módulo.
     window.addEventListener("focus", actualizarDepositos);
-    return () => { controlador?.abort(); window.removeEventListener("focus", actualizarDepositos); };
+    window.addEventListener(depositosEventoCambio, actualizarDepositos);
+    return () => { controlador?.abort(); window.removeEventListener("focus", actualizarDepositos); window.removeEventListener(depositosEventoCambio, actualizarDepositos); };
   }, [route, puedeConsultarDepositos, setWarehouse]);
 
   return (

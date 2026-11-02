@@ -49,6 +49,7 @@ export function saveProfileAccess(
   );
 }
 export const moduleNames: Record<string, string> = {
+  depositos: "Depósitos",
   inicio: "Inicio",
   productos: "Productos",
   inventario: "Inventario",
