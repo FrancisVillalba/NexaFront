@@ -8,7 +8,7 @@ import {
   changeUserStatus,
   loadUserDirectory,
   saveUser,
-} from "../../services/usersService";
+} from "../../services/usuariosServicio";
 
 type Dialog =
   | { kind: "edit"; user: DirectoryUser | null }

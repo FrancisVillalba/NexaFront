@@ -49,7 +49,7 @@ Permite buscar por nombre, apellido, documento o correo; filtrar por estado; pag
 crear, editar, desactivar y reactivar personas. La baja es lógica y no borra relaciones.
 No se permite desactivar a la persona del último administrador activo.
 
-El código comentado está en `src/features/people/People.tsx` y `peopleService.ts`.
+El código comentado está en `src/modulos/personas/Personas.tsx` y `personasServicio.ts`.
 
 ## Módulos comerciales
 
@@ -60,14 +60,14 @@ La autenticación real no convierte esos datos en persistencia de negocio ni en 
 ## Estructura para aprender
 
 - src/main.tsx: inicia React.
-- src/App.tsx: pantallas y composición general.
-- src/features/auth/Login.tsx: formulario de acceso.
-- src/features/auth/useAuth.ts: estado React, restauración, vencimiento y logout.
-- src/services/authService.ts: login y consulta de la sesión; adaptación de DTOs a la interfaz.
+- src/App.tsx: punto de entrada del espacio de trabajo.
+- src/modulos/autenticacion/autenticacionInicioSesion.tsx: formulario de acceso.
+- src/modulos/autenticacion/autenticacionSesion.ts: estado React, restauración, vencimiento y logout.
+- src/services/autenticacionServicio.ts: login y consulta de la sesión; adaptación de DTOs a la interfaz.
 - src/services/authSession.ts: guardar, leer y borrar token y vencimiento.
 - src/services/api.ts: peticiones JSON, encabezado Bearer y errores Problem Details.
-- src/services/usersService.ts: consultas y altas disponibles en NexaBack.
-- src/domain.ts: reglas comerciales locales de la maqueta.
+- src/services/usuariosServicio.ts: consultas y altas disponibles en NexaBack.
+- src/modulos/ventas/ventasServicio.ts y los servicios de cada módulo: reglas comerciales locales de la maqueta.
 - src/tailwind.css y src/styles.css: estilos actuales.
 - Program.cs: host de archivos estáticos y proxy YARP.
 

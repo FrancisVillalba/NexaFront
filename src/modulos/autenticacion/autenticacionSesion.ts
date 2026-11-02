@@ -1,6 +1,6 @@
 import type { User } from "../../types";
 import { useCallback, useEffect, useState } from "react";
-import { logout, restoreSession } from "../../services/authService";
+import { logout, restoreSession } from "../../services/autenticacionServicio";
 import {
   clearSession,
   getSession,

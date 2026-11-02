@@ -3,7 +3,7 @@ import type { User } from "../../types";
 import React, { useState } from "react";
 import * as I from "../../icons";
 import { Brand, RequiredMark } from "../../components/ui";
-import { login } from "../../services/authService";
+import { login } from "../../services/autenticacionServicio";
 
 // Complete, static class names let Tailwind detect every state at build time.
 const inputClasses =

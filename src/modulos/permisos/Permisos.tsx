@@ -8,8 +8,8 @@ import {
   loadProfiles,
   moduleNames,
   saveProfileAccess,
-} from "./permissionsService";
-import type { AccessDefinition, ProfileAccess } from "./permissionsService";
+} from "./permisosServicio";
+import type { AccessDefinition, ProfileAccess } from "./permisosServicio";
 
 const message = (failure: unknown) =>
   failure instanceof Error

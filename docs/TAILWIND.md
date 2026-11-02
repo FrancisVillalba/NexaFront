@@ -4,7 +4,7 @@ Tailwind CSS 4 está integrado con Vite. El login ya usa Tailwind; las demás pa
 
 ## Dónde editar
 
-- `src/features/auth/Login.tsx`: estructura, comportamiento y clases del login.
+- `src/modulos/autenticacion/autenticacionInicioSesion.tsx`: estructura, comportamiento y clases del login.
 - `src/tailwind.css`: entrada de estilos y colores de NEXA definidos con `@theme`.
 - `src/styles.css`: estilos existentes de las otras pantallas.
 - `src/components/ui.tsx`: componentes compartidos.

@@ -48,9 +48,9 @@ En el servidor de Vite, guardar un archivo actualiza la vista de desarrollo. En 
 | `package.json` | Define dependencias y comandos: dev y build |
 | `src/main.tsx` | Inicia React y monta App |
 | `src/App.tsx` | Contiene componentes y pantallas; buscá Inventory y SaleEditor |
-| `src/domain.ts` | Datos y reglas de la maqueta; buscá checkout y applyMovement |
+| `src/modulos/ventas/ventasServicio.ts y los servicios de cada módulo` | Datos y reglas de la maqueta; buscá checkout y applyMovement |
 | `src/styles.css` | Diseño general y adaptación a celular |
-| `src/features/auth/Login.tsx` | Formulario de acceso con clases de Tailwind |
+| `src/modulos/autenticacion/autenticacionInicioSesion.tsx` | Formulario de acceso con clases de Tailwind |
 | `src/tailwind.css` | Entrada de estilos y colores del tema |
 | `public/assets` | Logo y fotos |
 | `vite.config.mjs` | Configuración de Vite y proxy de API |
@@ -152,19 +152,27 @@ npm.cmd run build     # Comprueba los tipos y después compila con Vite
 
 Por ejemplo, `api<SessionUserDto>(...)` indica qué respuesta esperamos del backend. Es comparable a `ReadFromJsonAsync<UsuarioSesionDto>()` en C#: ayuda a detectar errores de propiedades, sin sustituir la validación del servidor.
 
-Estructura objetivo (todavía no creada):
+Estructura actual:
 
 ```text
 src/
-  app/                # Composición, rutas y proveedores
-  components/         # Controles reutilizables
-  features/
-    auth/             # Login y sesión
-    inventory/        # Productos y movimientos
-    sales/            # Ventas y presupuestos
-  services/           # HTTP y comunicación con C#
-  types/              # Contratos compartidos cuando haga falta
-  styles/
+  App.tsx             # Punto de entrada
+  components/
+    layout/           # Menú, barra superior y selección de pantallas
+    shared/           # Controles reutilizables
+  modulos/
+    autenticacion/    # Inicio de sesión
+    inventario/       # Productos e inventario
+    movimientos/     # Movimientos de stock
+    ventas/           # Ventas y cobros
+    compras/          # Compras y recepción
+    presupuestos/     # Presupuestos
+    personas/         # ABM de personas
+    usuarios/         # ABM de usuarios
+    perfiles/         # ABM de perfiles
+    permisos/         # Accesos por perfil
+  services/           # HTTP, sesión y utilidades compartidas
+  types/              # Tipos comerciales
 ```
 
 No agregues Redux u otras bibliotecas por anticipado; incorporalas cuando exista un problema concreto que lo justifique.
@@ -192,6 +200,6 @@ Primera sesión recomendada: separar y entender el login. Es un cambio pequeño 
 
 ## Estilos con Tailwind
 
-El login está separado en src/features/auth/Login.tsx y utiliza Tailwind CSS. Consultá docs/TAILWIND.md para editar sus clases y colores. El resto conserva CSS durante la migración gradual.
+El login está separado en src/modulos/autenticacion/autenticacionInicioSesion.tsx y utiliza Tailwind CSS. Consultá docs/TAILWIND.md para editar sus clases y colores. El resto conserva CSS durante la migración gradual.
 
 

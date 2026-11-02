@@ -2,47 +2,46 @@ import { useEffect, useRef, useState } from "react";
 import type { SubmitEvent } from "react";
 import { Field, Modal } from "../../components/ui";
 import * as I from "../../icons";
-import type { PersonDto } from "../../types";
+import type { ProfileDto } from "../../types";
 import {
-  changePersonStatus,
-  listPeople,
-  PEOPLE_PAGE_SIZE,
-  savePerson,
-} from "./peopleService";
-import type { PeopleQuery, PersonInput } from "./peopleService";
+  changeProfileStatus,
+  isProtectedProfile,
+  listProfiles,
+  PROFILES_PAGE_SIZE,
+  saveProfile,
+} from "./perfilesServicio";
+import type { ProfileInput, ProfilesQuery } from "./perfilesServicio";
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "No se pudo completar la operación.";
-
-// Una unión distingue las dos operaciones. Es similar a usar diferentes DTOs en C#.
 type Dialog =
-  | { kind: "edit"; person: PersonDto | null }
-  | { kind: "status"; person: PersonDto };
+  | { kind: "edit"; profile: ProfileDto | null }
+  | { kind: "status"; profile: ProfileDto };
 
-export function People() {
-  // useState conserva valores entre renderizados. Cambiar el estado vuelve a dibujar la pantalla.
-  const [people, setPeople] = useState<PersonDto[]>([]);
-  const [query, setQuery] = useState<PeopleQuery>({
+export function Profiles() {
+  // Cada estado tiene una responsabilidad: datos, filtros, carga, mensajes y diálogo abierto.
+  const [profiles, setProfiles] = useState<ProfileDto[]>([]);
+  const [query, setQuery] = useState<ProfilesQuery>({
     pagina: 1,
     buscar: "",
     activo: "todos",
   });
   const [search, setSearch] = useState("");
-  const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [revision, setRevision] = useState(0);
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
   useEffect(() => {
-    // El efecto sincroniza la pantalla con la API cuando cambian los filtros o la página.
-    // AbortController cancela la petición anterior: una respuesta vieja no pisa la búsqueda nueva.
+    // El efecto consulta PostgreSQL a través de la API. Al salir o cambiar el filtro,
+    // la limpieza cancela la petición para no mostrar respuestas desactualizadas.
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    listPeople(query, controller.signal)
+    listProfiles(query, controller.signal)
       .then((result) => {
-        if (!controller.signal.aborted) setPeople(result);
+        if (!controller.signal.aborted) setProfiles(result);
       })
       .catch((failure: unknown) => {
         if (!controller.signal.aborted) setError(errorMessage(failure));
@@ -56,11 +55,11 @@ export function People() {
   function refresh(message: string) {
     setDialog(null);
     setNotice(message);
-    // La revisión fuerza una nueva consulta, sin recargar toda la aplicación ni guardar datos locales.
+    // Se vuelve a leer el servidor después de guardar, sin recargar la aplicación.
     setRevision((previous) => previous + 1);
   }
 
-  function searchPeople(event: SubmitEvent<HTMLFormElement>) {
+  function searchProfiles(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setQuery((previous) => ({ ...previous, buscar: search.trim(), pagina: 1 }));
   }
@@ -69,8 +68,8 @@ export function People() {
     <>
       <div className="page-title">
         <div>
-          <h1>Personas</h1>
-          <p>Datos personales registrados en NexaBack y PostgreSQL.</p>
+          <h1>Perfiles</h1>
+          <p>Administrá los perfiles asignados a las cuentas de usuario.</p>
         </div>
         <div className="page-actions">
           <button
@@ -85,28 +84,26 @@ export function People() {
             className="btn"
             onClick={() => {
               setNotice("");
-              setDialog({ kind: "edit", person: null });
+              setDialog({ kind: "edit", profile: null });
             }}
           >
             <I.Plus size={18} />
-            Nueva persona
+            Nuevo perfil
           </button>
         </div>
       </div>
-
       {notice && (
         <p className="info-strip" role="status">
           <I.CircleCheck size={19} />
           {notice}
         </p>
       )}
-
-      <form className="filter-bar" onSubmit={searchPeople}>
+      <form className="filter-bar" onSubmit={searchProfiles}>
         <div className="search">
           <I.Search size={19} />
           <input
-            aria-label="Buscar personas"
-            placeholder="Nombre, apellido, documento o correo…"
+            aria-label="Buscar perfiles"
+            placeholder="Nombre o descripción…"
             maxLength={200}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -124,20 +121,19 @@ export function People() {
                 setQuery((previous) => ({ ...previous, activo, pagina: 1 }));
             }}
           >
-            <option value="todos">Todas</option>
-            <option value="true">Activas</option>
-            <option value="false">Inactivas</option>
+            <option value="todos">Todos</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
           </select>
         </Field>
       </form>
-
       <section
         className="panel"
-        aria-label="Listado de personas"
+        aria-label="Listado de perfiles"
         aria-busy={loading}
       >
         {loading ? (
-          <p role="status">Cargando personas…</p>
+          <p role="status">Cargando perfiles…</p>
         ) : error ? (
           <div className="error" role="alert">
             {error}
@@ -148,59 +144,60 @@ export function People() {
               <table>
                 <thead>
                   <tr>
-                    <th>Persona</th>
-                    <th>Documento</th>
-                    <th>Contacto</th>
-                    <th>Dirección</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {people.map((person) => (
-                    <tr key={person.id}>
+                  {profiles.map((profile) => (
+                    <tr key={profile.id}>
                       <td>
-                        <b>
-                          {person.nombres} {person.apellidos}
-                        </b>
+                        <b>{profile.nombre}</b>
+                        {isProtectedProfile(profile.nombre) && (
+                          <small className="block">Nombre protegido</small>
+                        )}
                       </td>
-                      <td>{person.documento || "—"}</td>
-                      <td>
-                        {person.correo || "—"}
-                        <small className="block">
-                          {person.telefono || "—"}
-                        </small>
-                      </td>
-                      <td>{person.direccion || "—"}</td>
+                      <td>{profile.descripcion || "—"}</td>
                       <td>
                         <span
-                          className={`badge ${person.activo ? "green" : "gray"}`}
+                          className={`badge ${profile.activo ? "green" : "gray"}`}
                         >
-                          {person.activo ? "Activa" : "Inactiva"}
+                          {profile.activo ? "Activo" : "Inactivo"}
                         </span>
                       </td>
                       <td>
                         <div className="row-actions">
                           <button
-                            className="btn outline small people-action"
-                            aria-label={`Editar a ${person.nombres} ${person.apellidos}`}
+                            className="btn outline small profile-action"
+                            aria-label={`Editar perfil ${profile.nombre}`}
                             onClick={() => {
                               setNotice("");
-                              setDialog({ kind: "edit", person });
+                              setDialog({ kind: "edit", profile });
                             }}
                           >
                             <I.Edit size={16} />
                             Editar
                           </button>
                           <button
-                            className={`btn small people-action ${person.activo ? "danger-outline" : "outline"}`}
-                            aria-label={`${person.activo ? "Desactivar" : "Activar"} a ${person.nombres} ${person.apellidos}`}
+                            className={`btn small profile-action ${profile.activo ? "danger-outline" : "outline"}`}
+                            disabled={
+                              profile.nombre === "Administrador" &&
+                              profile.activo
+                            }
+                            title={
+                              profile.nombre === "Administrador"
+                                ? "El perfil Administrador no se puede desactivar."
+                                : undefined
+                            }
+                            aria-label={`${profile.activo ? "Desactivar" : "Activar"} perfil ${profile.nombre}`}
                             onClick={() => {
                               setNotice("");
-                              setDialog({ kind: "status", person });
+                              setDialog({ kind: "status", profile });
                             }}
                           >
-                            {person.activo ? "Desactivar" : "Activar"}
+                            {profile.activo ? "Desactivar" : "Activar"}
                           </button>
                         </div>
                       </td>
@@ -208,15 +205,15 @@ export function People() {
                   ))}
                 </tbody>
               </table>
-              {!people.length && (
+              {!profiles.length && (
                 <p className="empty">
-                  No hay personas para los filtros seleccionados.
+                  No hay perfiles para los filtros seleccionados.
                 </p>
               )}
             </div>
             <div className="pagination">
               <small>
-                Página {query.pagina} · {people.length} registros
+                Página {query.pagina} · {profiles.length} registros
               </small>
               <div>
                 <button
@@ -233,7 +230,7 @@ export function People() {
                 </button>
                 <button
                   className="btn secondary"
-                  disabled={people.length < PEOPLE_PAGE_SIZE}
+                  disabled={profiles.length < PROFILES_PAGE_SIZE}
                   onClick={() =>
                     setQuery((previous) => ({
                       ...previous,
@@ -248,26 +245,29 @@ export function People() {
           </>
         )}
       </section>
-
-      {/* El padre pasa datos y callbacks por props; el formulario conserva sus propios campos. */}
+      <p className="muted">
+        Administrador conserva su nombre y acceso completo. Configurá los demás
+        perfiles desde Administración → Permisos.
+      </p>
+      {/* El padre entrega datos y callbacks al formulario mediante props. */}
       {dialog?.kind === "edit" && (
-        <PersonForm
-          person={dialog.person}
+        <ProfileForm
+          profile={dialog.profile}
           onClose={() => setDialog(null)}
           onSaved={() =>
-            refresh(dialog.person ? "Persona actualizada." : "Persona creada.")
+            refresh(dialog.profile ? "Perfil actualizado." : "Perfil creado.")
           }
         />
       )}
       {dialog?.kind === "status" && (
-        <PersonStatus
-          person={dialog.person}
+        <ProfileStatus
+          profile={dialog.profile}
           onClose={() => setDialog(null)}
           onSaved={() =>
             refresh(
-              dialog.person.activo
-                ? "Persona desactivada."
-                : "Persona activada.",
+              dialog.profile.activo
+                ? "Perfil desactivado."
+                : "Perfil activado.",
             )
           }
         />
@@ -276,38 +276,34 @@ export function People() {
   );
 }
 
-interface PersonFormProps {
-  person: PersonDto | null;
+interface ProfileFormProps {
+  profile: ProfileDto | null;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
-  const [values, setValues] = useState<PersonInput>({
-    nombres: person?.nombres ?? "",
-    apellidos: person?.apellidos ?? "",
-    documento: person?.documento ?? "",
-    correo: person?.correo ?? "",
-    telefono: person?.telefono ?? "",
-    direccion: person?.direccion ?? "",
+function ProfileForm({ profile, onClose, onSaved }: ProfileFormProps) {
+  const [values, setValues] = useState<ProfileInput>({
+    nombre: profile?.nombre ?? "",
+    descripcion: profile?.descripcion ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  // Un ref cambia inmediatamente sin esperar un render. Evita envíos dobles y cierres durante el guardado.
   const pending = useRef(false);
+  const protectedName = profile !== null && isProtectedProfile(profile.nombre);
   const close = () => {
     if (!pending.current) onClose();
   };
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    // El ref bloquea un segundo envío inmediatamente, sin esperar otro renderizado.
     if (pending.current) return;
     pending.current = true;
     setSaving(true);
     setError("");
     try {
-      // No cerramos el diálogo hasta que el backend confirme el guardado.
-      await savePerson(values, person?.id);
+      await saveProfile(values, profile?.id);
       onSaved();
     } catch (failure) {
       setError(errorMessage(failure));
@@ -317,73 +313,49 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
     }
   }
 
-  function change(field: keyof PersonInput, value: string) {
-    // Creamos un objeto nuevo. No modificamos directamente el estado anterior de React.
-    setValues((previous) => ({ ...previous, [field]: value }));
-  }
-
   return (
-    <Modal
-      title={person ? "Editar persona" : "Nueva persona"}
-      onClose={close}
-      wide
-    >
+    <Modal title={profile ? "Editar perfil" : "Nuevo perfil"} onClose={close}>
       <p className="form-help">
-        Los campos con asterisco (*) son obligatorios. El documento debe ser único.
+        El nombre es obligatorio y debe ser único. La descripción es opcional.
       </p>
+      {protectedName && (
+        <p className="form-help">
+          Este nombre está protegido. Podés modificar la descripción.
+        </p>
+      )}
+      {!profile && (
+        <p className="form-help">
+          Asigná los accesos del perfil desde Administración → Permisos después
+          de crearlo.
+        </p>
+      )}
       <form onSubmit={submit}>
-        <div className="form-grid">
+        <div className="form-stack">
           <Field
-            label="Nombres"
+            label="Nombre"
             required
-            maxLength={100}
-            autoComplete="given-name"
-            value={values.nombres}
+            maxLength={50}
+            readOnly={protectedName}
             disabled={saving}
-            onChange={(event) => change("nombres", event.target.value)}
+            value={values.nombre}
+            onChange={(event) =>
+              setValues((previous) => ({
+                ...previous,
+                nombre: event.target.value,
+              }))
+            }
           />
           <Field
-            label="Apellidos"
-            required
-            maxLength={100}
-            autoComplete="family-name"
-            value={values.apellidos}
+            label="Descripción"
+            maxLength={250}
             disabled={saving}
-            onChange={(event) => change("apellidos", event.target.value)}
-          />
-          <Field
-            label="Documento"
-            required
-            maxLength={30}
-            value={values.documento}
-            disabled={saving}
-            onChange={(event) => change("documento", event.target.value)}
-          />
-          <Field
-            label="Correo"
-            type="email"
-            maxLength={254}
-            autoComplete="email"
-            value={values.correo}
-            disabled={saving}
-            onChange={(event) => change("correo", event.target.value)}
-          />
-          <Field
-            label="Teléfono"
-            type="tel"
-            maxLength={30}
-            autoComplete="tel"
-            value={values.telefono}
-            disabled={saving}
-            onChange={(event) => change("telefono", event.target.value)}
-          />
-          <Field
-            label="Dirección"
-            maxLength={300}
-            autoComplete="street-address"
-            value={values.direccion}
-            disabled={saving}
-            onChange={(event) => change("direccion", event.target.value)}
+            value={values.descripcion}
+            onChange={(event) =>
+              setValues((previous) => ({
+                ...previous,
+                descripcion: event.target.value,
+              }))
+            }
           />
         </div>
         {error && (
@@ -401,7 +373,7 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
             Cancelar
           </button>
           <button className="btn" type="submit" disabled={saving}>
-            {saving ? "Guardando…" : "Guardar persona"}
+            {saving ? "Guardando…" : "Guardar perfil"}
           </button>
         </div>
       </form>
@@ -409,11 +381,11 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
   );
 }
 
-function PersonStatus({
-  person,
+function ProfileStatus({
+  profile,
   onClose,
   onSaved,
-}: Omit<PersonFormProps, "person"> & { person: PersonDto }) {
+}: Omit<ProfileFormProps, "profile"> & { profile: ProfileDto }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const pending = useRef(false);
@@ -426,7 +398,7 @@ function PersonStatus({
     setSaving(true);
     setError("");
     try {
-      await changePersonStatus(person.id, !person.activo);
+      await changeProfileStatus(profile.id, !profile.activo);
       onSaved();
     } catch (failure) {
       setError(errorMessage(failure));
@@ -437,20 +409,17 @@ function PersonStatus({
   }
   return (
     <Modal
-      title={person.activo ? "Desactivar persona" : "Activar persona"}
+      title={profile.activo ? "Desactivar perfil" : "Activar perfil"}
       onClose={close}
     >
       <p className="confirm-text">
-        ¿Querés {person.activo ? "desactivar" : "activar"} a{" "}
-        <b>
-          {person.nombres} {person.apellidos}
-        </b>
-        ?
+        ¿Querés {profile.activo ? "desactivar" : "activar"} el perfil{" "}
+        <b>{profile.nombre}</b>?
       </p>
       <p>
-        {person.activo
-          ? "Sus datos se conservarán. Si tiene una cuenta de usuario, dejará de tener acceso al sistema mientras la persona esté inactiva."
-          : "La persona volverá a estar disponible. Para ingresar, su usuario y su perfil también deben estar activos."}
+        {profile.activo
+          ? "Los usuarios con este perfil dejarán de tener acceso al sistema. Se conservarán el perfil y sus relaciones."
+          : "Los usuarios con este perfil podrán ingresar si su cuenta y su persona también están activas."}
       </p>
       {error && (
         <div className="error" role="alert">
@@ -462,7 +431,7 @@ function PersonStatus({
           Cancelar
         </button>
         <button
-          className={`btn ${person.activo ? "danger-outline" : ""}`}
+          className={`btn ${profile.activo ? "danger-outline" : ""}`}
           disabled={saving}
           onClick={confirm}
         >
