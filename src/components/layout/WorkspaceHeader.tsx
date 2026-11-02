@@ -1,160 +1,87 @@
 import * as I from "../../icons";
 import { IconButton } from "../ui";
-import { warehouses } from "../../services/commercialConfig";
-import { stock } from "../../modulos/inventario/inventarioServicio";
+import { useEffect, useState } from "react";
+import { inventarioDepositos } from "../../modulos/inventario/inventarioServicio";
+import type { DepositoDto } from "../../modulos/inventario/inventarioTipos";
 import { Button } from "../shared/Button";
-import { administrationNavigation } from "./navigation";
+import { administrationNavigation, rutasDemostracion } from "./navigation";
 import type { AppContext, Setter } from "../../uiTypes";
 
-// Barra superior: búsqueda, depósito activo, notificaciones y cierre de sesión.
-type Props = Pick<
-  AppContext,
-  "can"
-  | "setInventoryQuery"
-  | "go"
-  | "warehouse"
-  | "setWarehouse"
-  | "data"
-  | "setInventoryFilter"
-  | "user"> & { setCollapsed: Setter<boolean>; collapsed: boolean; route: string; current: string; globalSearch: string; setGlobalSearch: Setter<string>; setTopMenu: Setter<string
->; topMenu: string; logout: () => void };
+type Props = Pick<AppContext, "warehouse" | "setWarehouse" | "user"> & {
+  setCollapsed: Setter<boolean>;
+  collapsed: boolean;
+  route: string;
+  current: string;
+  setTopMenu: Setter<string>;
+  topMenu: string;
+  logout: () => void;
+};
 
-export function WorkspaceHeader({
-  setCollapsed,
-  collapsed,
-  route,
-  current,
-  can,
-  setInventoryQuery,
-  globalSearch,
-  go,
-  setGlobalSearch,
-  warehouse,
-  setWarehouse,
-  setTopMenu,
-  topMenu,
-  data,
-  setInventoryFilter,
-  user,
-  logout,
-}: Props) {
+// Cada módulo real contiene sus propios filtros y depósitos obtenidos desde la API.
+export function WorkspaceHeader({ setCollapsed, collapsed, route, current, warehouse,
+  setWarehouse, setTopMenu, topMenu, user, logout }: Props) {
+  const [depositos, setDepositos] = useState<DepositoDto[]>([]);
+  const [cargandoDepositos, setCargandoDepositos] = useState(true);
+  const [errorDepositos, setErrorDepositos] = useState("");
+  const puedeConsultarDepositos = user.accesses.some(codigo =>
+    ["inventario.ver", "movimientos.ver", "movimientos.crear"].includes(codigo));
+
+  useEffect(() => {
+    if (!puedeConsultarDepositos) return;
+    let controlador: AbortController | undefined;
+    function actualizarDepositos() {
+      controlador?.abort();
+      const solicitud = new AbortController();
+      controlador = solicitud;
+      setCargandoDepositos(true);
+      setErrorDepositos("");
+      setDepositos([]);
+      inventarioDepositos(solicitud.signal).then(resultado => {
+        if (solicitud.signal.aborted) return;
+        const activos = resultado.filter(deposito => deposito.activo);
+        setDepositos(activos);
+        // Si el depósito elegido se eliminó o desactivó, seleccionar uno vigente.
+        setWarehouse(anterior => activos.some(d => d.nombre === anterior) ? anterior : activos[0]?.nombre ?? "");
+      }).catch(fallo => {
+        if (!solicitud.signal.aborted) setErrorDepositos(fallo instanceof Error ? fallo.message : "No se pudieron cargar los depósitos.");
+      }).finally(() => {
+        if (!solicitud.signal.aborted) setCargandoDepositos(false);
+      });
+    }
+    actualizarDepositos();
+    // Refleja cambios hechos en la base al volver a la aplicación o cambiar de módulo.
+    window.addEventListener("focus", actualizarDepositos);
+    return () => { controlador?.abort(); window.removeEventListener("focus", actualizarDepositos); };
+  }, [route, puedeConsultarDepositos, setWarehouse]);
+
   return (
     <header className="topbar">
-      <IconButton
-        icon={I.Menu}
-        label="Mostrar u ocultar menú"
-        onClick={() => setCollapsed(!collapsed)}
-      />
+      <IconButton icon={I.Menu} label="Mostrar u ocultar menú" onClick={() => setCollapsed(!collapsed)} />
       <span className="breadcrumb">
         Mi negocio <I.ChevronRight size={13} />
-        {administrationNavigation.some(([id]) => id === route) && (
-          <>
-            Administración <I.ChevronRight size={13} />
-          </>
-        )}
+        {administrationNavigation.some(([id]) => id === route) && <>Administración <I.ChevronRight size={13} /></>}
         <b>{current}</b>
       </span>
-      <form
-        style={{
-          display:
-            can("inventario.ver") || can("productos.ver")
-              ? undefined
-              : "none",
-        }}
-        className="global-search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setInventoryQuery(globalSearch);
-          go(can("inventario.ver") ? "inventario" : "productos");
-        }}
-      >
-        <I.Search size={17} />
-        <input
-          aria-label="Buscar en el inventario"
-          placeholder="Buscar producto o código…"
-          value={globalSearch}
-          onChange={(e) => setGlobalSearch(e.target.value)}
-        />
-        <kbd>↵</kbd>
-      </form>
-      <label className="warehouse">
+      <div className="topbar-actions">
+      {rutasDemostracion.includes(route) && puedeConsultarDepositos && <label className="warehouse" title={errorDepositos || undefined}>
         <I.BuildingStore size={18} />
-        <select
-          aria-label="Depósito activo"
-          value={warehouse}
-          onChange={(e) => setWarehouse(e.target.value)}
-        >
-          {warehouses.map((w) => (
-            <option key={w}>{w}</option>
-          ))}
+        <select aria-label="Depósito activo" value={cargandoDepositos || errorDepositos ? "" : warehouse}
+          disabled={cargandoDepositos || !!errorDepositos || !depositos.length} onChange={e => setWarehouse(e.target.value)}>
+          {(cargandoDepositos || errorDepositos || !depositos.length) && <option value="">{cargandoDepositos ? "Cargando depósitos…" : errorDepositos ? "Error al cargar depósitos" : "Sin depósitos activos"}</option>}
+          {depositos.map(deposito => <option key={deposito.id} value={deposito.nombre}>{deposito.nombre}</option>)}
         </select>
-      </label>
-      <div
-        className="top-pop"
-        style={{ display: can("inventario.ver") ? undefined : "none" }}
-      >
-        <button
-          className="notification icon-btn"
-          aria-label="Notificaciones de stock"
-          onClick={() =>
-            setTopMenu(topMenu === "alerts" ? "" : "alerts")
-          }
-        >
-          <I.Bell size={22} />
-          {data.products.some((p) => stock(p, warehouse) <= p.min) && (
-            <span />
-          )}
-        </button>
-        {topMenu === "alerts" && (
-          <div className="dropdown">
-            <b>Atención al inventario</b>
-            <p>
-              {
-                data.products.filter(
-                  (p) => stock(p, warehouse) <= p.min,
-                ).length
-              }{" "}
-              productos necesitan reposición en {warehouse}.
-            </p>
-            <Button
-              variant="text"
-              onClick={() => {
-                setInventoryFilter("Stock bajo");
-                go("inventario");
-              }}
-            >
-              Revisar existencias <I.ArrowRight size={16} />
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="top-pop">
-        <button
-          className="profile"
-          onClick={() =>
-            setTopMenu(topMenu === "profile" ? "" : "profile")
-          }
-        >
-          <span className="avatar">{user!.name[0]}</span>
-          <span>
-            <b>{user!.name.split(" ")[0]}</b>
-            <small>{user!.role}</small>
-          </span>
+      </label>}
+      <div className="top-pop profile-menu">
+        <button className="profile" onClick={() => setTopMenu(topMenu === "profile" ? "" : "profile")}>
+          <span className="avatar">{user.name[0]}</span>
+          <span><b>{user.name.split(" ")[0]}</b><small>{user.role}</small></span>
           <I.ChevronDown size={14} />
         </button>
-        {topMenu === "profile" && (
-          <div className="dropdown">
-            <b>{user!.name}</b>
-            <p>{user.username}</p>
-            <Button
-              variant="secondary"
-              icon={I.Logout}
-              onClick={logout}
-            >
-              Cerrar sesión
-            </Button>
-          </div>
-        )}
+        {topMenu === "profile" && <div className="dropdown">
+          <b>{user.name}</b><p>{user.username}</p>
+          <Button variant="secondary" icon={I.Logout} onClick={logout}>Cerrar sesión</Button>
+        </div>}
+      </div>
       </div>
     </header>
   );

@@ -6,7 +6,7 @@ import { IconButton, Field } from "../../components/ui";
 import { TODAY } from "../../services/commercialConfig";
 import { uid } from "../../services/commercialValidation";
 import { money, num } from "../../services/formatters";
-import { stock } from "../inventario/inventarioServicio";
+import { stock } from "../inventario/inventarioDemostracion";
 import { checkout } from "./ventasServicio";
 import { useApp } from "../../services/AppContext";
 import { requireRecord } from "../../components/shared/helpers";

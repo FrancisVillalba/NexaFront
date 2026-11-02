@@ -8,7 +8,6 @@ import type { AppContext, Setter } from "../../uiTypes";
 type Props = Pick<
   AppContext,
   "go"
-  | "data"
 > & {
    allowed: string[];
   route: string;
@@ -22,7 +21,6 @@ export function WorkspaceSidebar({
   route,
   go,
   collapsed,
-  data,
   administrationOpen,
   setAdministrationOpen,
 }: Props) {
@@ -51,9 +49,6 @@ export function WorkspaceSidebar({
             >
               <Icon size={21} />
               <span>{label}</span>
-              {id === "inventario" && (
-                <small>{data.products.length}</small>
-              )}
             </button>
           ))}
         {administrationNavigation.some(([id]) =>
@@ -122,8 +117,8 @@ export function WorkspaceSidebar({
       <div className="sidebar-bottom">
         <span className="demo-dot" />
         <div>
-          <b>Modo demostración</b>
-          <small>Tus cambios se guardan aquí</small>
+          <b>NEXA</b>
+          <small>Accesos según tu perfil</small>
         </div>
       </div>
     </aside>

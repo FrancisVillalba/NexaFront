@@ -3,7 +3,7 @@ import * as I from "../../icons";
 import { Field } from "../../components/ui";
 import { TODAY, categories } from "../../services/commercialConfig";
 import { money, num, date, csv } from "../../services/formatters";
-import { stock } from "../inventario/inventarioServicio";
+import { stock } from "../inventario/inventarioDemostracion";
 import { useApp } from "../../services/AppContext";
 import { Button } from "../../components/shared/Button";
 import { PageTitle } from "../../components/shared/PageTitle";

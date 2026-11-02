@@ -1,19 +1,14 @@
-import type { Product } from "../../types/commercial";
-import { positive } from "../../services/commercialValidation";
+import { api } from "../../services/api";
+import type { DepositoDto, InventarioConsulta, InventarioPagina } from "./inventarioTipos";
 
-// Lógica local de demostración, separada de los componentes de React.
-export const stock = (p: Product, w = "Casa central") =>
-  Number(p.stocks[w] || 0);
-
-export const status = (p: Product, w: string) =>
-  stock(p, w) === 0
-    ? "Sin stock"
-    : stock(p, w) <= p.min
-      ? "Stock bajo"
-      : "Disponible";
-
-export function validQty(p: Product, qty: number | string) {
-  positive(qty, "La cantidad");
-  if (!["metro", "kilo"].includes(p.unit) && !Number.isInteger(Number(qty)))
-    throw Error("Usá cantidades enteras para " + p.name + ".");
+// Consulta las existencias y depósitos reales de NexaBack.
+export const inventarioTamanoPagina = 20;
+export function inventarioDepositos(signal?: AbortSignal) {
+  return api<DepositoDto[]>("/api/inventario/depositos", undefined, { signal });
+}
+export function inventarioListar(consulta: InventarioConsulta, signal?: AbortSignal) {
+  const parametros = new URLSearchParams({ depositoId: String(consulta.depositoId), pagina: String(consulta.pagina),
+    tamanoPagina: String(inventarioTamanoPagina), buscar: consulta.buscar, estado: consulta.estado });
+  if (consulta.activo !== "todos") parametros.set("activo", consulta.activo);
+  return api<InventarioPagina>(`/api/inventario?${parametros}`, undefined, { signal });
 }

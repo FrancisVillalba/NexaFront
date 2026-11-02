@@ -36,3 +36,7 @@
 /* ABM de productos: campos agrupados y acciones con el mismo tamaño. */
 .productos-campos{border:0;padding:0;margin:0;min-width:0}.row-actions .productos-accion{width:100px;height:31px;flex:none}
 
+
+/* Agrupa el depósito y el menú de usuario en el extremo derecho. */
+.topbar-actions{margin-left:auto;display:flex;align-items:center;gap:inherit;flex-shrink:0}
+

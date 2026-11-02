@@ -1,6 +1,6 @@
 # NEXA — Frontend
 
-Interfaz React con TypeScript, Vite y Tailwind. Login y usuarios conectados a NexaBack (ASP.NET Core 10 y PostgreSQL). Los módulos comerciales conservan sus datos locales de demostración mientras se desarrollan sus APIs. El código de src se comprueba en modo estricto con TypeScript.
+Interfaz React con TypeScript, Vite y Tailwind. Administración, Productos e Inventario conectados a NexaBack (ASP.NET Core 10 y PostgreSQL). El resto de los módulos comerciales conserva datos locales de demostración mientras se desarrollan sus APIs. El código de src se comprueba en modo estricto con TypeScript.
 
 ## Ejecutar
 
@@ -29,7 +29,7 @@ Ingresar con el nombre de usuario registrado en NexaDB, por ejemplo fvillalba, y
 
 - POST /api/usuarios/auth/login valida las credenciales en NexaBack.
 - sessionStorage guarda el token y su vencimiento por defecto.
-- Recordar mi sesión usa localStorage, conservando el vencimiento original de 15 minutos.
+- Recordar mi sesión usa localStorage, conservando el vencimiento original de 30 minutos.
 - No se guardan contraseñas, hashes ni datos personales en el registro de sesión.
 - Las peticiones protegidas envían Authorization: Bearer con el token.
 - Al recargar, GET /api/usuarios/auth/me verifica el token en el servidor y devuelve los datos actuales.
@@ -53,7 +53,11 @@ El código comentado está en `src/modulos/personas/Personas.tsx` y `personasSer
 
 ## Módulos comerciales
 
-Inicio, inventario, movimientos, compras, ventas, presupuestos, caja, clientes, proveedores y reportes siguen funcionando con datos de demostración en localStorage. Los comprobantes no tienen validez fiscal. La fecha comercial sigue fija en 26/10/2026.
+Productos, Inventario y Movimientos de stock consultan NexaBack. Inventario requiere ejecutar manualmente el script `back/src/NexaBack/Infrastructure/Persistence/Sql/003_Inventario.sql` sobre una base que ya tenga `catalogo.productos`.
+
+Desde Inventario se registran entradas, salidas, ajustes a saldo final y transferencias entre depósitos. Las acciones dependen de los permisos del token. Las existencias iniciales se cargan con una entrada; no se importan productos ni saldos locales de demostración.
+
+Inicio, compras, ventas, presupuestos, clientes, proveedores y reportes siguen funcionando con datos de demostración en localStorage y no modifican el inventario real. Los comprobantes no tienen validez fiscal. La fecha comercial sigue fija en 26/10/2026.
 
 La autenticación real no convierte esos datos en persistencia de negocio ni en autorización de servidor. Stock, cobros y demás operaciones se trasladarán a NexaBack por etapas.
 
@@ -67,7 +71,11 @@ La autenticación real no convierte esos datos en persistencia de negocio ni en 
 - src/services/authSession.ts: guardar, leer y borrar token y vencimiento.
 - src/services/api.ts: peticiones JSON, encabezado Bearer y errores Problem Details.
 - src/services/usuariosServicio.ts: consultas y altas disponibles en NexaBack.
-- src/modulos/ventas/ventasServicio.ts y los servicios de cada módulo: reglas comerciales locales de la maqueta.
+- src/modulos/productos/productosListado.tsx y productosServicio.ts: ABM real de productos.
+- src/modulos/inventario/inventarioListado.tsx e inventarioServicio.ts: consulta real de existencias.
+- src/modulos/inventario/inventarioMovimiento.tsx: formulario de entradas, salidas, ajustes y transferencias.
+- src/modulos/movimientos/movimientosListado.tsx y movimientosServicio.ts: historial real y registro.
+- src/modulos/inventario/inventarioDemostracion.ts: cálculos de los módulos comerciales que todavía son una demostración.
 - src/tailwind.css y src/styles.css: estilos actuales.
 - Program.cs: host de archivos estáticos y proxy YARP.
 

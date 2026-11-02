@@ -3,7 +3,6 @@ import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { usePaymentActions } from "../../modulos/ventas/ventasCobrosAcciones";
 import { useContactActions } from "../../modulos/contactos/contactosAcciones";
-import { useMovementActions } from "../../modulos/movimientos/movimientosAcciones";
 import type { Invoice } from "../../types/commercial";
 import type { FormField, FormValues, FormModel, ModalModel } from "../../uiTypes";
 import type { CommercialState, CartItem } from "../../types";
@@ -24,7 +23,7 @@ import { InvoiceModal } from "../../modulos/ventas/ventasFacturaModal";
 import { PurchaseModal } from "../../modulos/compras/comprasModal";
 import { PurchaseDetail } from "../../modulos/compras/comprasDetalle";
 import { Statement } from "../../modulos/contactos/contactosEstadoCuenta";
-import { navigation, administrationNavigation } from "./navigation";
+import { navigation, administrationNavigation, rutasDemostracion } from "./navigation";
 import { loadCommercialState, saveCommercialState } from "../../services/commercialStorage";
 
 // Coordina la sesión, el menú, los datos y la apertura de pantallas y modales.
@@ -40,9 +39,6 @@ export function NexaWorkspace() {
     // Abrir el grupo no navega: solo muestra u oculta los cuatro accesos hijos.
     [administrationOpen, setAdministrationOpen] = useState(false),
     [topMenu, setTopMenu] = useState(""),
-    [globalSearch, setGlobalSearch] = useState(""),
-    [inventoryQuery, setInventoryQuery] = useState(""),
-    [inventoryFilter, setInventoryFilter] = useState("Todos"),
     [cart, setCart] = useState<CartItem[]>([]),
     [saleClient, setSaleClient] = useState("c1"),
     [saleDiscount, setSaleDiscount] = useState(0);
@@ -141,7 +137,6 @@ export function NexaWorkspace() {
     setSaleClient("c1");
     go("nueva-venta");
   }
-  const { movementForm } = useMovementActions({ data, can, notify, commit, form, warehouse, user });
   const { contactForm } = useContactActions({ data, can, notify, commit, form });
   const { pay } = usePaymentActions({ data, can, notify, commit, form });
   const ctx = {
@@ -157,15 +152,10 @@ export function NexaWorkspace() {
     confirm,
     modal,
     setModal,
-    movementForm,
     contactForm,
     viewInvoice,
     pay,
     openSale,
-    inventoryQuery,
-    setInventoryQuery,
-    inventoryFilter,
-    setInventoryFilter,
     cart,
     setCart,
     saleClient,
@@ -212,46 +202,33 @@ export function NexaWorkspace() {
       <Context.Provider value={{ ...ctx, user }}>
         <div className={cn("shell", collapsed && "collapsed")}>
           <WorkspaceSidebar
+                go={go}
                 allowed={allowed}
                 route={route}
-                go={go}
                 collapsed={collapsed}
-                data={data}
                 administrationOpen={administrationOpen}
                 setAdministrationOpen={setAdministrationOpen}
               />
           <div className="main-shell">
             <WorkspaceHeader
-                setCollapsed={setCollapsed}
-                collapsed={collapsed}
-                route={route}
-                current={current}
-                can={can}
-                setInventoryQuery={setInventoryQuery}
-                globalSearch={globalSearch}
-                go={go}
-                setGlobalSearch={setGlobalSearch}
-                warehouse={warehouse}
-                setWarehouse={setWarehouse}
-                setTopMenu={setTopMenu}
-                topMenu={topMenu}
-                data={data}
-                setInventoryFilter={setInventoryFilter}
-                user={user}
-                logout={logout}
-              />
-            <WorkspacePage
-                can={can}
-                route={route}
-                user={user}
-              />
+              setCollapsed={setCollapsed}
+              collapsed={collapsed}
+              route={route}
+              current={current}
+              warehouse={warehouse}
+              setWarehouse={setWarehouse}
+              setTopMenu={setTopMenu}
+              topMenu={topMenu}
+              user={user}
+              logout={logout}
+            />
+            <WorkspacePage can={can} route={route} user={user} />
             <footer>
               <span>
                 <b>NEXA</b> · {data.settings.company}
               </span>
               <span>
-                Datos de ejemplo <span className="footer-sep">|</span> 26 oct.
-                2026
+                {rutasDemostracion.includes(route) ? "Datos de demostración" : "Datos de NexaBack"}
               </span>
             </footer>
           </div>

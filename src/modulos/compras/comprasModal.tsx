@@ -5,7 +5,7 @@ import { IconButton, Field, Modal } from "../../components/ui";
 import { TODAY, warehouses } from "../../services/commercialConfig";
 import { uid } from "../../services/commercialValidation";
 import { money, num } from "../../services/formatters";
-import { validQty } from "../inventario/inventarioServicio";
+import { validQty } from "../inventario/inventarioDemostracion";
 import { useApp } from "../../services/AppContext";
 import { requireRecord } from "../../components/shared/helpers";
 import { Button } from "../../components/shared/Button";

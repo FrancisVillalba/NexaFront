@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { categories } from "../../services/commercialConfig";
 import { money } from "../../services/formatters";
-import { stock } from "../inventario/inventarioServicio";
+import { stock } from "../inventario/inventarioDemostracion";
 
 // Gráficos del tablero, separados de la pantalla principal.
 export function SalesChart({ invoices }: { invoices: Invoice[] }) {

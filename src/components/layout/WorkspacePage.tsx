@@ -5,9 +5,9 @@ import { Permissions } from "../../modulos/permisos/Permisos";
 import { routeAccess } from "../../services/accessControl";
 import { Panel } from "../shared/Panel";
 import { Dashboard } from "../../modulos/inicio/Inicio";
-import { Inventory } from "../../modulos/inventario/Inventario";
+import { InventarioListado } from "../../modulos/inventario/inventarioListado";
 import { ProductosListado } from "../../modulos/productos/productosListado";
-import { Movements } from "../../modulos/movimientos/Movimientos";
+import { MovimientosListado } from "../../modulos/movimientos/movimientosListado";
 import { Sales } from "../../modulos/ventas/Ventas";
 import { SaleEditor } from "../../modulos/ventas/ventasEdicion";
 import { Purchases } from "../../modulos/compras/Compras";
@@ -45,9 +45,9 @@ export function WorkspacePage({
       ) : route === "productos" ? (
         <ProductosListado />
       ) : route === "inventario" ? (
-        <Inventory title="Inventario" />
+        <InventarioListado />
       ) : route === "movimientos" ? (
-        <Movements />
+        <MovimientosListado />
       ) : route === "ventas" ? (
         <Sales />
       ) : route === "nueva-venta" || route === "nuevo-presupuesto" ? (

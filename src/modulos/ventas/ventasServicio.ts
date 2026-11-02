@@ -1,7 +1,7 @@
 import type { CommercialState, CheckoutInput } from "../../types/commercial";
 import { TODAY } from "../../services/commercialConfig";
 import { clone, positive, uid } from "../../services/commercialValidation";
-import { stock, validQty } from "../inventario/inventarioServicio";
+import { stock, validQty } from "../inventario/inventarioDemostracion";
 
 // Lógica local de demostración, separada de los componentes de React.
 export function checkout(

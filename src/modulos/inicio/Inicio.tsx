@@ -1,6 +1,6 @@
 import * as I from "../../icons";
 import { money, num, date } from "../../services/formatters";
-import { stock, status } from "../inventario/inventarioServicio";
+import { stock, status } from "../inventario/inventarioDemostracion";
 import { useApp } from "../../services/AppContext";
 import { Button } from "../../components/shared/Button";
 import { Badge } from "../../components/shared/Badge";
@@ -18,8 +18,6 @@ export function Dashboard() {
     warehouse,
     go,
     openSale,
-    setInventoryFilter,
-    movementForm,
     viewInvoice,
   } = useApp();
   const invoices = data.invoices.filter(
@@ -66,7 +64,6 @@ export function Dashboard() {
           icon={I.AlertTriangle}
           color="orange"
           onClick={() => {
-            setInventoryFilter("Stock bajo");
             go("inventario");
           }}
         />
@@ -88,7 +85,6 @@ export function Dashboard() {
             <Button
               variant="text"
               onClick={() => {
-                setInventoryFilter("Stock bajo");
                 go("inventario");
               }}
             >
@@ -123,9 +119,9 @@ export function Dashboard() {
                     access="movimientos.crear"
                     variant="outline small"
                     icon={I.Plus}
-                    onClick={() => movementForm(p)}
+                    onClick={() => go("inventario")}
                   >
-                    Reponer
+                    Ver inventario
                   </Button>
                 </td>
               </tr>

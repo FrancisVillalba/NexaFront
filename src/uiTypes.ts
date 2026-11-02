@@ -75,15 +75,10 @@ export interface AppContext {
   confirm: (title: string, text: string, onConfirm: () => void) => void;
   modal: ModalModel | null;
   setModal: Setter<ModalModel | null>;
-  movementForm: (product?: Product, type?: string) => void;
   contactForm: (type: string, item?: Contact) => void;
   viewInvoice: (invoice: Invoice) => void;
   pay: (invoice: Invoice) => void;
   openSale: () => void;
-  inventoryQuery: string;
-  setInventoryQuery: Setter<string>;
-  inventoryFilter: string;
-  setInventoryFilter: Setter<string>;
   cart: CartItem[];
   setCart: Setter<CartItem[]>;
   saleClient: string;

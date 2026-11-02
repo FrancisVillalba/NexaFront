@@ -22,3 +22,6 @@ export const administrationNavigation: [string, string, Icon][] = [
   ["perfiles", "Perfiles", I.ShieldCheck],
   ["permisos", "Permisos", I.Lock],
 ];
+
+// Estos módulos aún conservan la demostración local y no alteran el inventario real.
+export const rutasDemostracion = ["inicio", "compras", "ventas", "nueva-venta", "presupuestos", "nuevo-presupuesto", "clientes", "proveedores", "reportes", "configuracion"];
