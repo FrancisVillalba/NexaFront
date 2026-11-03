@@ -15,6 +15,7 @@ export interface Product {
   image?: string;
 }
 export interface Contact {
+  active?: boolean;
   id: string;
   name: string;
   doc: string;

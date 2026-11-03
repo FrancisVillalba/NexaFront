@@ -19,7 +19,7 @@ export function Sales() {
   const rows = data.invoices.filter(
     (x) =>
       x.warehouse === warehouse &&
-      (x.number + " " + data.clients.find((c) => c.id === x.client)?.name)
+      (x.number + " " + (data.clients.find((c) => c.id === x.client)?.name ?? "Cliente no disponible"))
         .toLowerCase()
         .includes(q.toLowerCase()) &&
       (filter === "Todas" ||
@@ -97,7 +97,7 @@ export function Sales() {
               rows.map((x) => [
                 x.number,
                 x.date,
-                data.clients.find((c) => c.id === x.client)?.name,
+                (data.clients.find((c) => c.id === x.client)?.name ?? "Cliente no disponible"),
                 x.total,
                 x.paid,
                 x.state,
@@ -130,7 +130,7 @@ export function Sales() {
                 </button>
               </td>
               <td>{date(x.date)}</td>
-              <td>{data.clients.find((c) => c.id === x.client)?.name}</td>
+              <td>{(data.clients.find((c) => c.id === x.client)?.name ?? "Cliente no disponible")}</td>
               <td>{x.payment}</td>
               <td className="nowrap">
                 <b>{money(x.total)}</b>

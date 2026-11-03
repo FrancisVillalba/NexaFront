@@ -160,7 +160,7 @@ export function Dashboard() {
                   </button>
                   <small className="block">{date(x.date)}</small>
                 </td>
-                <td>{data.clients.find((c) => c.id === x.client)?.name}</td>
+                <td>{(data.clients.find((c) => c.id === x.client)?.name ?? "Cliente no disponible")}</td>
                 <td className="nowrap">
                   <b>{money(x.total)}</b>
                 </td>

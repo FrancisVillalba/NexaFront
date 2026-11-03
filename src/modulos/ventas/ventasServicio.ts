@@ -11,7 +11,7 @@ export function checkout(
 ) {
   const s = clone(state);
   if (!input.items.length) throw Error("Agregá al menos un producto.");
-  if (!s.clients.some((c) => c.id === input.client))
+  if (!s.clients.some((c) => c.id === input.client && c.active === true))
     throw Error("Seleccioná un cliente.");
   const combined = new Map<number, number>();
   input.items.forEach((x) =>
@@ -44,8 +44,6 @@ export function checkout(
   const total = Math.round(subtotal - discount);
   if (total <= 0) throw Error("El total debe ser mayor que cero.");
   const credit = input.payment === "Crédito";
-  if (credit && input.client === "c1")
-    throw Error("Seleccioná un cliente identificado para vender a crédito.");
   if (credit) {
     const c = s.clients.find((x) => x.id === input.client)!,
       debt = s.invoices

@@ -32,7 +32,7 @@ export function Quotes() {
           icon={I.Plus}
           onClick={() => {
             setCart([]);
-            setSaleClient("c1");
+            setSaleClient("");
             setSaleDiscount(0);
             go("nuevo-presupuesto");
           }}
@@ -59,7 +59,7 @@ export function Quotes() {
                 <b>{q.number}</b>
               </td>
               <td>{date(q.date)}</td>
-              <td>{data.clients.find((c) => c.id === q.client)?.name}</td>
+              <td>{(data.clients.find((c) => c.id === q.client)?.name ?? "Cliente no disponible")}</td>
               <td>{q.items.length}</td>
               <td>{money(q.total)}</td>
               <td>

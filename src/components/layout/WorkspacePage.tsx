@@ -11,9 +11,10 @@ import { DepositosListado } from "../../modulos/depositos/depositosListado";
 import { MovimientosListado } from "../../modulos/movimientos/movimientosListado";
 import { Sales } from "../../modulos/ventas/Ventas";
 import { SaleEditor } from "../../modulos/ventas/ventasEdicion";
-import { Purchases } from "../../modulos/compras/Compras";
+import { ComprasListado } from "../../modulos/compras/comprasListado";
 import { Quotes } from "../../modulos/presupuestos/Presupuestos";
-import { Contacts } from "../../modulos/contactos/Contactos";
+import { ClientesListado } from "../../modulos/clientes/clientesListado";
+import { ProveedoresListado } from "../../modulos/proveedores/proveedoresListado";
 import { Reports } from "../../modulos/reportes/Reportes";
 import { Settings } from "../../modulos/configuracion/Configuracion";
 import type { AppContext } from "../../uiTypes";
@@ -54,11 +55,13 @@ export function WorkspacePage({
       ) : route === "nueva-venta" || route === "nuevo-presupuesto" ? (
         <SaleEditor quoteOnly={route === "nuevo-presupuesto"} />
       ) : route === "compras" ? (
-        <Purchases />
+        <ComprasListado />
       ) : route === "presupuestos" ? (
         <Quotes />
-      ) : route === "clientes" || route === "proveedores" ? (
-        <Contacts key={route} type={route} />
+      ) : route === "clientes" ? (
+        <ClientesListado />
+      ) : route === "proveedores" ? (
+        <ProveedoresListado />
       ) : route === "reportes" ? (
         <Reports />
       ) : route === "depositos" ? (

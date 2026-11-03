@@ -1,8 +1,8 @@
+import { useContactosCatalogo } from "../../modulos/contactos/contactosCatalogo";
 import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { usePaymentActions } from "../../modulos/ventas/ventasCobrosAcciones";
-import { useContactActions } from "../../modulos/contactos/contactosAcciones";
 import type { Invoice } from "../../types/commercial";
 import type { FormField, FormValues, FormModel, ModalModel } from "../../uiTypes";
 import type { CommercialState, CartItem } from "../../types";
@@ -20,9 +20,6 @@ import { cn } from "../shared/helpers";
 import { Button } from "../shared/Button";
 import { FormModal } from "../shared/FormModal";
 import { InvoiceModal } from "../../modulos/ventas/ventasFacturaModal";
-import { PurchaseModal } from "../../modulos/compras/comprasModal";
-import { PurchaseDetail } from "../../modulos/compras/comprasDetalle";
-import { Statement } from "../../modulos/contactos/contactosEstadoCuenta";
 import { navigation, administrationNavigation, rutasDemostracion } from "./navigation";
 import { loadCommercialState, saveCommercialState } from "../../services/commercialStorage";
 
@@ -30,7 +27,7 @@ import { loadCommercialState, saveCommercialState } from "../../services/commerc
 export function NexaWorkspace() {
   const { user, loading, authError, completeLogin, logout } = useAuth();
   const can = (code: string) => hasAccess(user, code);
-  const [data, setData] = useState<CommercialState>(loadCommercialState),
+  const [datosLocales, setData] = useState<CommercialState>(loadCommercialState),
     [route, setRoute] = useState("inicio"),
     [warehouse, setWarehouse] = useState("Casa central"),
     [modal, setModal] = useState<ModalModel | null>(null),
@@ -40,11 +37,13 @@ export function NexaWorkspace() {
     [administrationOpen, setAdministrationOpen] = useState(false),
     [topMenu, setTopMenu] = useState(""),
     [cart, setCart] = useState<CartItem[]>([]),
-    [saleClient, setSaleClient] = useState("c1"),
+    [saleClient, setSaleClient] = useState(""),
     [saleDiscount, setSaleDiscount] = useState(0);
+  const catalogo = useContactosCatalogo(user ? `${user.id}|${user.accesses.join("|")}` : "", route, can("clientes.ver"), can("proveedores.ver"));
+  const data: CommercialState = { ...datosLocales, clients: catalogo.clients, suppliers: catalogo.suppliers };
   useEffect(() => {
-    saveCommercialState(data);
-  }, [data]);
+    saveCommercialState(datosLocales);
+  }, [datosLocales]);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(null), 4500);
@@ -134,13 +133,13 @@ export function NexaWorkspace() {
   function openSale() {
     setCart([]);
     setSaleDiscount(0);
-    setSaleClient("c1");
+    setSaleClient("");
     go("nueva-venta");
   }
-  const { contactForm } = useContactActions({ data, can, notify, commit, form });
   const { pay } = usePaymentActions({ data, can, notify, commit, form });
   const ctx = {
     can,
+    contactosCargando: catalogo.cargando,
     data,
     user,
     warehouse,
@@ -152,7 +151,6 @@ export function NexaWorkspace() {
     confirm,
     modal,
     setModal,
-    contactForm,
     viewInvoice,
     pay,
     openSale,
@@ -222,6 +220,7 @@ export function NexaWorkspace() {
               user={user}
               logout={logout}
             />
+            {catalogo.error && <div className="form-error" role="alert"><p>{catalogo.error}</p><Button variant="secondary" onClick={catalogo.actualizar}>Reintentar carga de contactos</Button></div>}
             <WorkspacePage can={can} route={route} user={user} />
             <footer>
               <span>
@@ -285,11 +284,6 @@ export function NexaWorkspace() {
             </Modal>
           )}
           {modal?.kind === "invoice" && <InvoiceModal id={modal.id} />}{" "}
-          {modal?.kind === "purchase" && <PurchaseModal />}
-          {modal?.kind === "purchase-detail" && (
-            <PurchaseDetail id={modal.id} />
-          )}{" "}
-          {modal?.kind === "statement" && <Statement id={modal.id} />}
         </div>
       </Context.Provider>
     </AccessContext.Provider>

@@ -49,10 +49,10 @@ export interface FormModel {
 export type ModalModel =
   | FormModel
   | { kind: "confirm"; title: string; text: string; onConfirm: () => void }
-  | { kind: "invoice" | "purchase-detail" | "statement"; id: string }
-  | { kind: "purchase" };
+  | { kind: "invoice"; id: string };
 export type Setter<T> = Dispatch<SetStateAction<T>>;
 export interface AppContext {
+  contactosCargando: boolean;
   can: (code: string) => boolean;
   data: CommercialState;
   user: User;
@@ -75,7 +75,6 @@ export interface AppContext {
   confirm: (title: string, text: string, onConfirm: () => void) => void;
   modal: ModalModel | null;
   setModal: Setter<ModalModel | null>;
-  contactForm: (type: string, item?: Contact) => void;
   viewInvoice: (invoice: Invoice) => void;
   pay: (invoice: Invoice) => void;
   openSale: () => void;

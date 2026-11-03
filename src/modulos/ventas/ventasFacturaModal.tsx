@@ -16,10 +16,7 @@ export function InvoiceModal({ id }: { id: string }) {
       data.invoices.find((x) => x.id === id),
       "Factura",
     ),
-    client = requireRecord(
-      data.clients.find((c) => c.id === inv.client),
-      "Cliente",
-    );
+    client = data.clients.find((c) => c.id === inv.client) ?? { name: "Cliente no disponible", doc: "—" };
   return (
     <Modal
       title="Comprobante de venta"

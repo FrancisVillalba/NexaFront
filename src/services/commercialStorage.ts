@@ -6,12 +6,12 @@ const STORAGE = "ferro-demo-v1";
 // Conservar la misma clave evita perder los datos locales durante esta reorganización.
 export function loadCommercialState(): CommercialState {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE) || "null") || seed();
+    return { ...(JSON.parse(localStorage.getItem(STORAGE) || "null") || seed()), clients: [], suppliers: [] };
   } catch {
     return seed();
   }
 }
 
 export function saveCommercialState(data: CommercialState): void {
-  localStorage.setItem(STORAGE, JSON.stringify(data));
+  localStorage.setItem(STORAGE, JSON.stringify({ ...data, clients: [], suppliers: [] }));
 }

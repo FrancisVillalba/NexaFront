@@ -19,7 +19,8 @@ import { Table } from "../../components/shared/Table";
 
 // Editor de ventas y presupuestos: conserva el mismo cálculo comercial.
 export function SaleEditor({ quoteOnly }: { quoteOnly: boolean }) {
-  const { can } = useApp();
+  const { can, contactosCargando } = useApp();
+  const clientesActivos = useApp().data.clients.filter(cliente => cliente.active === true);
   const {
     data,
     user,
@@ -74,6 +75,10 @@ export function SaleEditor({ quoteOnly }: { quoteOnly: boolean }) {
   }
   function saveQuote() {
     if (!can("presupuestos.crear")) return;
+    if (contactosCargando || !clientesActivos.some(cliente => cliente.id === saleClient)) {
+      setError("Seleccioná un cliente activo del backend.");
+      return;
+    }
     if (!cart.length) {
       setError("Agregá productos antes de guardar.");
       return;
@@ -138,15 +143,18 @@ export function SaleEditor({ quoteOnly }: { quoteOnly: boolean }) {
           <div className="pos-fields">
             <Field label="Cliente">
               <select
-                value={saleClient}
+                value={clientesActivos.some(cliente => cliente.id === saleClient) ? saleClient : ""}
+                disabled={contactosCargando || !can("clientes.ver")}
                 onChange={(e) => setSaleClient(e.target.value)}
               >
-                {data.clients.map((c) => (
+                <option value="">{contactosCargando ? "Cargando clientes…" : "Seleccionar cliente"}</option>
+                {clientesActivos.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
               </select>
+              {!can("clientes.ver") ? <small>Necesitás permiso para consultar Clientes.</small> : !contactosCargando && !clientesActivos.length && <small>No hay clientes activos. Registrá uno desde Clientes.</small>}
             </Field>
             <Field label="Condición de venta">
               <select
@@ -401,7 +409,7 @@ export function SaleEditor({ quoteOnly }: { quoteOnly: boolean }) {
               access="ventas.crear"
               variant="green full"
               icon={I.Receipt}
-              disabled={!cart.length}
+              disabled={!cart.length || contactosCargando || !clientesActivos.some(cliente => cliente.id === saleClient)}
               onClick={finish}
             >
               {payment === "Crédito"
@@ -413,7 +421,7 @@ export function SaleEditor({ quoteOnly }: { quoteOnly: boolean }) {
             access="presupuestos.crear"
             variant="secondary full"
             icon={I.FileText}
-            disabled={!cart.length}
+            disabled={!cart.length || contactosCargando || !clientesActivos.some(cliente => cliente.id === saleClient)}
             onClick={saveQuote}
           >
             Guardar presupuesto

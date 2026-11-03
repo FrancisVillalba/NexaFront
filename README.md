@@ -57,7 +57,11 @@ Productos, Inventario y Movimientos de stock consultan NexaBack. Inventario requ
 
 Desde Inventario se registran entradas, salidas, ajustes a saldo final y transferencias entre depósitos. Las acciones dependen de los permisos del token. Las existencias iniciales se cargan con una entrada; no se importan productos ni saldos locales de demostración.
 
-Inicio, compras, ventas, presupuestos, clientes, proveedores y reportes siguen funcionando con datos de demostración en localStorage y no modifican el inventario real. Los comprobantes no tienen validez fiscal. La fecha comercial sigue fija en 26/10/2026.
+Clientes y Proveedores consultan NexaBack y mantienen datos propios para particulares o empresas. No dependen del ABM de Personas. Los permisos provienen del token.
+
+Los archivos `clientesListado.tsx`, `clientesServicio.ts`, `proveedoresListado.tsx` y `proveedoresServicio.ts` usan los componentes compartidos de `src/modulos/contactos`. Incluyen comentarios para seguir el flujo entre formulario, servicio HTTP y backend.
+
+Inicio, ventas, presupuestos y reportes siguen funcionando con datos de demostración en localStorage y no modifican el inventario real. Los selectores y nombres de clientes/proveedores provienen ahora del backend. Los comprobantes y cuentas corrientes siguen siendo locales; la validación de crédito del simulador usa el límite consultado, sin registrar operaciones en PostgreSQL. Los comprobantes no tienen validez fiscal. La fecha comercial sigue fija en 26/10/2026.
 
 La autenticación real no convierte esos datos en persistencia de negocio ni en autorización de servidor. Stock, cobros y demás operaciones se trasladarán a NexaBack por etapas.
 
@@ -105,3 +109,23 @@ npm.cmd run build
 ```
 
 La compilación ejecuta primero `tsc --noEmit` y después Vite.
+
+Clientes y Proveedores guardan nombre o razón social, documento / RUC, correo, teléfono y dirección en sus propias tablas. Personas queda destinada a los usuarios del sistema. Los registros comerciales no exigen apellidos ni seleccionan o crean una Persona. Un mismo documento puede existir en Personas, Clientes y Proveedores; dentro de cada tabla comercial se controla la duplicación por tipo y número de documento. El alta y la edición modifican únicamente el módulo correspondiente, con auditoría y control de versión.
+
+Sobre una instalación que ya tenga comercial.clientes y comercial.proveedores, ejecutar manualmente 009_Clientes_Proveedores_Datos_Propios.sql con el backend detenido. Copia los datos antes asociados a Personas, conserva IDs, auditoría y compras, y elimina PersonaId de las tablas comerciales. No elimina personas existentes. Si faltan datos obligatorios de origen, aborta sin dejar cambios parciales para permitir corregirlos y repetir el script. Luego reiniciar backend y recargar front; no requiere permisos nuevos.
+
+Si ya se ejecutó la versión del 006 que conservaba `vinculos_respaldo`, ejecutar manualmente `007_Eliminar_Vinculos_Respaldo.sql` para quitar esa tabla.
+
+Los catálogos comerciales se consultan en `/api/clientes` y `/api/proveedores`, recorriendo todas las páginas y respetando los permisos de consulta. Ventas y Presupuestos permiten seleccionar clientes activos; Compras usa su API propia para buscar proveedores y productos activos y elegir depósitos reales. No se usa un consumidor final ficticio ni contactos del template como alternativa ante errores. Los catálogos se actualizan al navegar o volver a la ventana y se mantienen en memoria, fuera de localStorage. Los IDs reales usan prefijos `clientes:` y `proveedores:` para impedir que los antiguos comprobantes locales se asocien por error a personas reales. Los contactos antiguos no disponibles se muestran como tales; no se borran los comprobantes locales anteriores.
+
+## Compras conectadas a NexaBack
+
+Ejecutar manualmente `back/src/NexaBack/Infrastructure/Persistence/Sql/008_Compras.sql` (desde el backend: `src/NexaBack/Infrastructure/Persistence/Sql/008_Compras.sql`). Requiere las tablas de Proveedores, Productos e Inventario ya preparadas. El arranque no crea tablas ni ejecuta SQL. Después reiniciar el backend; asignar `compras.ver`, `compras.crear`, `compras.recibir` y el nuevo `compras.cancelar` según el perfil y volver a iniciar sesión. El script no asigna permisos a perfiles.
+
+El flujo es Pendiente → Recibida o Pendiente → Cancelada. Crear una orden guarda cabecera y detalle sin cambiar stock. La recepción es completa: valida proveedor, depósito, productos y unidades activos; registra una entrada por línea y actualiza las existencias en la misma transacción. Cada línea guarda el ID del movimiento para consultar su trazabilidad. Los reintentos de recepción no vuelven a sumar cantidades. Las versiones y la transacción serializable rechazan modificaciones simultáneas; ante un conflicto, actualizar y reintentar. Las compras recibidas no se cancelan; devoluciones y recepciones parciales quedan para una etapa posterior.
+
+`comercial.compras` y `comercial.compras_detalles` guardan auditoría de creación y modificación. Los nombres, códigos, unidades y costos de la orden se conservan como datos históricos. El total se calcula en el servidor redondeando cada subtotal a dos decimales; no incluye impuestos, facturación fiscal ni pagos. Recibir una compra modifica existencias y movimientos, sin reemplazar automáticamente el costo ni el precio de venta del catálogo.
+
+El front usa `comprasListado.tsx`, `comprasEdicion.tsx`, `comprasDetalle.tsx`, `comprasServicio.ts` y `comprasTipos.ts`. Los catálogos mínimos de Compras requieren `compras.crear`; no necesitan acceso administrativo a Depósitos. No se importan órdenes del template. Ventas, Presupuestos, Inicio y Reportes todavía conservan su demostración local y no reflejan automáticamente las compras reales.
+
+Tipo de documento comercial: los ABM de Clientes y Proveedores exigen seleccionar CI (Cédula de identidad), RUC, PASAPORTE u OTRO. El backend valida el catálogo y normaliza el código. Ejecutar manualmente 010_Tipo_Documento_Comercial.sql después del 009, con el backend detenido. Los registros anteriores quedan con tipo nulo y se muestran como Sin definir, hasta que se editen para clasificarlos. El índice único es por tipo y número dentro de cada tabla; ante una coincidencia con un registro anterior sin clasificar, se solicita editar ese registro para evitar duplicarlo. Las compras nuevas conservan ProveedorTipoDocumento junto al documento histórico; las anteriores no se reclasifican con el tipo actual del proveedor. No se modificó el esquema de Personas.
