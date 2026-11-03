@@ -9,8 +9,9 @@ import { InventarioListado } from "../../modulos/inventario/inventarioListado";
 import { ProductosListado } from "../../modulos/productos/productosListado";
 import { DepositosListado } from "../../modulos/depositos/depositosListado";
 import { MovimientosListado } from "../../modulos/movimientos/movimientosListado";
-import { Sales } from "../../modulos/ventas/Ventas";
-import { SaleEditor } from "../../modulos/ventas/ventasEdicion";
+import { VentasListado } from "../../modulos/ventas/ventasListado";
+import { VentasNueva } from "../../modulos/ventas/ventasEdicion";
+import { PresupuestosEdicion } from "../../modulos/presupuestos/presupuestosEdicion";
 import { ComprasListado } from "../../modulos/compras/comprasListado";
 import { Quotes } from "../../modulos/presupuestos/Presupuestos";
 import { ClientesListado } from "../../modulos/clientes/clientesListado";
@@ -51,9 +52,11 @@ export function WorkspacePage({
       ) : route === "movimientos" ? (
         <MovimientosListado />
       ) : route === "ventas" ? (
-        <Sales />
-      ) : route === "nueva-venta" || route === "nuevo-presupuesto" ? (
-        <SaleEditor quoteOnly={route === "nuevo-presupuesto"} />
+        <VentasListado />
+      ) : route === "nueva-venta" ? (
+        <VentasNueva />
+      ) : route === "nuevo-presupuesto" ? (
+        <PresupuestosEdicion />
       ) : route === "compras" ? (
         <ComprasListado />
       ) : route === "presupuestos" ? (

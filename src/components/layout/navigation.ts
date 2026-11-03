@@ -8,7 +8,7 @@ export const navigation: [string, string, Icon][] = [
   ["inventario", "Inventario", I.Package],
   ["movimientos", "Movimientos de stock", I.ArrowsExchange],
   ["compras", "Compras", I.ShoppingCart],
-  ["ventas", "Ventas y facturación", I.Receipt],
+  ["ventas", "Ventas", I.Receipt],
   ["presupuestos", "Presupuestos", I.FileText],
   ["clientes", "Clientes", I.Users],
   ["proveedores", "Proveedores", I.Truck],
@@ -25,4 +25,4 @@ export const administrationNavigation: [string, string, Icon][] = [
 ];
 
 // Estos módulos aún conservan la demostración local y no alteran el inventario real.
-export const rutasDemostracion = ["inicio", "ventas", "nueva-venta", "presupuestos", "nuevo-presupuesto", "reportes", "configuracion"];
+export const rutasDemostracion = ["inicio", "presupuestos", "nuevo-presupuesto", "reportes", "configuracion"];

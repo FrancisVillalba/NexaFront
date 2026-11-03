@@ -76,7 +76,6 @@ export interface AppContext {
   modal: ModalModel | null;
   setModal: Setter<ModalModel | null>;
   viewInvoice: (invoice: Invoice) => void;
-  pay: (invoice: Invoice) => void;
   openSale: () => void;
   cart: CartItem[];
   setCart: Setter<CartItem[]>;

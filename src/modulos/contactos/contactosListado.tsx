@@ -1,3 +1,5 @@
+import { ProveedoresCuentaCorriente } from "../proveedores/proveedoresCuentaCorriente";
+import { ClientesCuentaCorriente } from "../clientes/clientesCuentaCorriente";
 import { documentoTipoNombre } from "./contactosDocumentos";
 import { useEffect, useState } from "react";
 import type { SubmitEvent } from "react";
@@ -10,7 +12,7 @@ import { ContactosEdicion } from "./contactosEdicion";
 import { ContactosEstado } from "./contactosEstado";
 import type { ContactoComercial, ContactosConsulta, ContactosPagina, ContactosServicio } from "./contactosTipos";
 
-type Dialogo = { tipo: "edicion"; contacto: ContactoComercial | null } | { tipo: "estado"; contacto: ContactoComercial };
+type Dialogo = { tipo: "cuenta"; contactoId: number } | { tipo: "edicion"; contacto: ContactoComercial | null } | { tipo: "estado"; contacto: ContactoComercial };
 const moneda = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 2 });
 
 export function ContactosListado({ servicio }: { servicio: ContactosServicio }) {
@@ -72,6 +74,7 @@ export function ContactosListado({ servicio }: { servicio: ContactosServicio }) 
                 <Button access={`${servicio.tipo}.estado`} variant={`${contacto.activo ? "danger-outline" : "outline"} small productos-accion`} 
                   
                   aria-label={`${contacto.activo ? "Desactivar" : "Activar"} ${contacto.nombreRazonSocial}`} onClick={() => { setAviso(""); setDialogo({ tipo: "estado", contacto }); }}>{contacto.activo ? "Desactivar" : "Activar"}</Button>
+                <Button access={servicio.tipo + ".cuenta_corriente"} variant="outline small" aria-label={"Cuenta corriente de " + contacto.nombreRazonSocial} onClick={() => setDialogo({ tipo: "cuenta", contactoId: contacto.id })}>Cuenta corriente</Button>
                 {!puede(`${servicio.tipo}.editar`) && !puede(`${servicio.tipo}.estado`) && <small>Solo consulta</small>}
               </div></td>
             </tr>)}</tbody>
@@ -82,6 +85,8 @@ export function ContactosListado({ servicio }: { servicio: ContactosServicio }) 
           </div></div>
         </>}
       </section>
+      {dialogo?.tipo === "cuenta" && cliente && puede("clientes.cuenta_corriente") && <ClientesCuentaCorriente clienteId={dialogo.contactoId} alCerrar={() => setDialogo(null)} />}
+      {dialogo?.tipo === "cuenta" && !cliente && puede("proveedores.cuenta_corriente") && <ProveedoresCuentaCorriente proveedorId={dialogo.contactoId} alCerrar={() => setDialogo(null)} />}
       {dialogo?.tipo === "edicion" && puede(`${servicio.tipo}.${dialogo.contacto ? "editar" : "crear"}`) && <ContactosEdicion servicio={servicio} contacto={dialogo.contacto} alCerrar={() => setDialogo(null)} alGuardar={() => actualizar(dialogo.contacto ? "Registro actualizado." : `${cliente ? "Cliente creado" : "Proveedor creado"}.`)} />}
       {dialogo?.tipo === "estado" && puede(`${servicio.tipo}.estado`) && <ContactosEstado servicio={servicio} contacto={dialogo.contacto} alCerrar={() => setDialogo(null)} alGuardar={() => actualizar(dialogo.contacto.activo ? "Registro desactivado." : "Registro activado.")} />}
     </>

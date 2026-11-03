@@ -1,17 +1,15 @@
 import * as I from "../../icons";
 import { Brand, Modal } from "../../components/ui";
 import { money, num, date } from "../../services/formatters";
-import { voidInvoice } from "./ventasServicio";
 import { useApp } from "../../services/AppContext";
 import { requireRecord } from "../../components/shared/helpers";
 import { Button } from "../../components/shared/Button";
 import { Badge } from "../../components/shared/Badge";
 import { Table } from "../../components/shared/Table";
 
-// Detalle de una venta.
+// Consulta de los comprobantes locales antiguos de Inicio, sin operaciones sobre stock o pagos.
 export function InvoiceModal({ id }: { id: string }) {
-  const { can } = useApp();
-  const { data, user, setModal, pay, confirm, act } = useApp();
+  const { data, setModal } = useApp();
   const inv = requireRecord(
       data.invoices.find((x) => x.id === id),
       "Factura",
@@ -19,7 +17,7 @@ export function InvoiceModal({ id }: { id: string }) {
     client = data.clients.find((c) => c.id === inv.client) ?? { name: "Cliente no disponible", doc: "—" };
   return (
     <Modal
-      title="Comprobante de venta"
+      title="Comprobante de demostración"
       onClose={() => setModal(null)}
       wide
       className="receipt-modal"
@@ -88,37 +86,6 @@ export function InvoiceModal({ id }: { id: string }) {
         >
           Imprimir / PDF
         </Button>
-        {inv.state !== "Anulada" && inv.total > inv.paid && (
-          <Button access="ventas.cobrar" icon={I.Cash} onClick={() => pay(inv)}>
-            Registrar cobro
-          </Button>
-        )}
-        {inv.state !== "Anulada" && can("ventas.anular") && (
-          <Button
-            access="ventas.anular"
-            variant="danger-outline"
-            icon={I.ArrowBackUp}
-            onClick={() =>
-              confirm(
-                "Anular venta",
-                "Se devolverán los productos al stock y se registrará el reintegro de lo cobrado en la caja de demostración.",
-                () => {
-                  if (
-                    !act(
-                      (s) => voidInvoice(s, id, user!.name),
-                      "Venta anulada y stock devuelto",
-                    )
-                  )
-                    throw Error(
-                      "No se pudo anular. Revisá el estado de la caja.",
-                    );
-                },
-              )
-            }
-          >
-            Anular venta
-          </Button>
-        )}
       </div>
     </Modal>
   );

@@ -2,7 +2,6 @@ import { useContactosCatalogo } from "../../modulos/contactos/contactosCatalogo"
 import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
-import { usePaymentActions } from "../../modulos/ventas/ventasCobrosAcciones";
 import type { Invoice } from "../../types/commercial";
 import type { FormField, FormValues, FormModel, ModalModel } from "../../uiTypes";
 import type { CommercialState, CartItem } from "../../types";
@@ -136,7 +135,6 @@ export function NexaWorkspace() {
     setSaleClient("");
     go("nueva-venta");
   }
-  const { pay } = usePaymentActions({ data, can, notify, commit, form });
   const ctx = {
     can,
     contactosCargando: catalogo.cargando,
@@ -152,7 +150,6 @@ export function NexaWorkspace() {
     modal,
     setModal,
     viewInvoice,
-    pay,
     openSale,
     cart,
     setCart,

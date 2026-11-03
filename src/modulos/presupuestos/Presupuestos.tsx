@@ -25,7 +25,7 @@ export function Quotes() {
     <>
       <PageTitle
         title="Presupuestos"
-        subtitle="Prepará una propuesta y convertíla en venta cuando tu cliente confirme."
+        subtitle="Prepará propuestas de demostración. La conversión a ventas reales está pendiente."
       >
         <Button
           access="presupuestos.crear"
@@ -70,13 +70,8 @@ export function Quotes() {
                   <Button
                     access={["presupuestos.convertir", "ventas.crear"]}
                     variant="outline small"
-                    onClick={() => {
-                      setCart(q.items.map((x) => ({ ...x })));
-                      setSaleClient(q.client);
-                      setSaleDiscount(q.discount);
-                      setWarehouse(q.warehouse);
-                      go("nueva-venta");
-                    }}
+                    disabled
+                    title="La conversión estará disponible al conectar Presupuestos con las ventas reales."
                   >
                     Convertir en venta
                   </Button>

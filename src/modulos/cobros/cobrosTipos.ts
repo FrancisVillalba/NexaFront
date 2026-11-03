@@ -1,0 +1,4 @@
+export type MedioPago = "EFECTIVO" | "TRANSFERENCIA" | "TARJETA" | "OTRO";
+export interface Cobro { id: number; numero: string; ventaId: number; ventaNumero: string; importe: number; fechaCobro: string; medioPago: MedioPago; referencia: string | null; observaciones: string | null; estado: "Vigente" | "Anulado"; version: string; anuladoEn: string | null; motivoAnulacion: string | null; creadoEn: string; creadoPor: number | null; modificadoEn: string | null; modificadoPor: number | null; }
+export interface VentaCobros { ventaId: number; ventaNumero: string; ventaEstado: "Confirmada" | "Anulada"; versionVenta: string; totalVenta: number; cobrado: number; saldo: number; estadoCobro: string; items: Cobro[]; totalRegistros: number; pagina: number; tamanoPagina: number; }
+export interface CobroEntrada { operacionId: string; versionVenta: string; importe: number; fechaCobro: string; medioPago: MedioPago; referencia: string; observaciones: string; }

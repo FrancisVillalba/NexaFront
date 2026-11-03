@@ -1,0 +1,3 @@
+import type { Pago } from "../pagos/pagosTipos";
+export interface CuentaCompra { id: number; numero: string; fecha: string; estado: "Pendiente" | "Recibida" | "Cancelada"; total: number; pagado: number; saldo: number; estadoPago: string; }
+export interface ProveedorCuenta { proveedorId: number; proveedorNombre: string; tipoDocumento: string | null; documento: string; activo: boolean; totalCompras: number; totalPagos: number; saldo: number; compras: CuentaCompra[]; totalRegistrosCompras: number; paginaCompras: number; pagos: Pago[]; totalRegistrosPagos: number; paginaPagos: number; tamanoPagina: number; }
