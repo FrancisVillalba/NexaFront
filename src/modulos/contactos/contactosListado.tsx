@@ -13,7 +13,6 @@ import { ContactosEstado } from "./contactosEstado";
 import type { ContactoComercial, ContactosConsulta, ContactosPagina, ContactosServicio } from "./contactosTipos";
 
 type Dialogo = { tipo: "cuenta"; contactoId: number } | { tipo: "edicion"; contacto: ContactoComercial | null } | { tipo: "estado"; contacto: ContactoComercial };
-const moneda = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 2 });
 
 export function ContactosListado({ servicio }: { servicio: ContactosServicio }) {
   const puede = useAccess();
@@ -63,11 +62,10 @@ export function ContactosListado({ servicio }: { servicio: ContactosServicio }) 
         {error ? <div className="form-error" role="alert"><p>{error}</p><Button variant="secondary" onClick={() => setRevision(x => x + 1)}>Reintentar</Button></div>
           : cargando ? <p className="empty" role="status">Cargando {servicio.tipo}…</p> : <>
           <div className="table-wrap"><table>
-            <thead><tr><th>{cliente ? "Cliente" : "Proveedor"}</th><th>Contacto</th><th>Condiciones</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>{cliente ? "Cliente" : "Proveedor"}</th><th>Contacto</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>{datos.items.map(contacto => <tr key={contacto.id}>
               <td><b>{contacto.nombreRazonSocial}</b><small className="block">{documentoTipoNombre(contacto.tipoDocumento)} · {contacto.documento || "Sin documento"}</small></td>
               <td>{contacto.correo || "—"}<small className="block">{contacto.telefono || "—"}</small><small className="block">{contacto.direccion || "—"}</small></td>
-              <td>{contacto.plazoPagoDias} días{cliente && <small className="block">Límite: Gs. {moneda.format(contacto.limiteCredito)}</small>}</td>
               <td><span className={`badge ${contacto.activo ? "green" : "gray"}`}>{contacto.activo ? "Activo" : "Inactivo"}</span></td>
               <td><div className="row-actions">
                 <Button access={`${servicio.tipo}.editar`} variant="outline small productos-accion" icon={I.Edit} aria-label={`Editar ${contacto.nombreRazonSocial}`} onClick={() => { setAviso(""); setDialogo({ tipo: "edicion", contacto }); }}>Editar</Button>

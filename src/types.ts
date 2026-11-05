@@ -35,6 +35,8 @@ export interface PersonDto {
   id: number;
   nombres: string;
   apellidos: string;
+  tipoDocumentoId: number | null;
+  tipoDocumento: string | null;
   documento: string | null;
   correo: string | null;
   telefono: string | null;

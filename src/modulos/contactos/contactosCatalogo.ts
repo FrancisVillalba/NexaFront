@@ -16,7 +16,7 @@ export async function cargarCatalogoContactos(servicio: ContactosServicio, signa
       name: contacto.nombreRazonSocial,
       doc: documentoTipoNombre(contacto.tipoDocumento) + " · " + contacto.documento, phone: contacto.telefono ?? "",
       email: contacto.correo ?? "", address: contacto.direccion ?? "",
-      credit: contacto.limiteCredito, active: contacto.activo,
+      active: contacto.activo,
     })));
     if (pagina * resultado.tamanoPagina >= resultado.total) return contactos;
     if (!resultado.items.length) throw new Error("El catálogo cambió durante la consulta. Volvé a actualizar.");

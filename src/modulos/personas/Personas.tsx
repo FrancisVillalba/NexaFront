@@ -1,3 +1,6 @@
+import { useTiposDocumento } from "../tiposDocumento/tiposDocumentoEstado";
+import { TiposDocumentoSelector } from "../tiposDocumento/tiposDocumentoSelector";
+import { documentoTipoNombre } from "../contactos/contactosDocumentos";
 import { useEffect, useRef, useState } from "react";
 import type { SubmitEvent } from "react";
 import { Field, Modal } from "../../components/ui";
@@ -164,7 +167,7 @@ export function People() {
                           {person.nombres} {person.apellidos}
                         </b>
                       </td>
-                      <td>{person.documento || "—"}</td>
+                      <td>{documentoTipoNombre(person.tipoDocumento)}<small className="block">{person.documento || "—"}</small></td>
                       <td>
                         {person.correo || "—"}
                         <small className="block">
@@ -286,11 +289,13 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
   const [values, setValues] = useState<PersonInput>({
     nombres: person?.nombres ?? "",
     apellidos: person?.apellidos ?? "",
+    tipoDocumentoId: person?.tipoDocumentoId ?? 0,
     documento: person?.documento ?? "",
     correo: person?.correo ?? "",
     telefono: person?.telefono ?? "",
     direccion: person?.direccion ?? "",
   });
+  const catalogo = useTiposDocumento(person?.tipoDocumentoId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   // Un ref cambia inmediatamente sin esperar un render. Evita envíos dobles y cierres durante el guardado.
@@ -302,6 +307,7 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending.current) return;
+    if (!catalogo.esValido(values.tipoDocumentoId)) { setError("Seleccioná un tipo de documento válido."); return; }
     pending.current = true;
     setSaving(true);
     setError("");
@@ -317,7 +323,7 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
     }
   }
 
-  function change(field: keyof PersonInput, value: string) {
+  function change(field: Exclude<keyof PersonInput, "tipoDocumentoId">, value: string) {
     // Creamos un objeto nuevo. No modificamos directamente el estado anterior de React.
     setValues((previous) => ({ ...previous, [field]: value }));
   }
@@ -329,7 +335,7 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
       wide
     >
       <p className="form-help">
-        Los campos con asterisco (*) son obligatorios. El documento debe ser único.
+        Los campos con asterisco (*) son obligatorios. La combinación de tipo y número de documento debe ser única.
       </p>
       <form onSubmit={submit}>
         <div className="form-grid">
@@ -351,6 +357,8 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
             disabled={saving}
             onChange={(event) => change("apellidos", event.target.value)}
           />
+          <TiposDocumentoSelector catalogo={catalogo} valor={values.tipoDocumentoId ? String(values.tipoDocumentoId) : ""}
+            alCambiar={valor => setValues(previous => ({ ...previous, tipoDocumentoId: Number(valor) }))} deshabilitado={saving} />
           <Field
             label="Documento"
             required
@@ -400,7 +408,7 @@ function PersonForm({ person, onClose, onSaved }: PersonFormProps) {
           >
             Cancelar
           </button>
-          <button className="btn" type="submit" disabled={saving}>
+          <button className="btn" type="submit" disabled={saving || !catalogo.esValido(values.tipoDocumentoId)}>
             {saving ? "Guardando…" : "Guardar persona"}
           </button>
         </div>

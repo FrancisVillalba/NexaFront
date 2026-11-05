@@ -1,3 +1,4 @@
+import { documentoTipoNombre } from "../contactos/contactosDocumentos";
 import { useEffect, useRef, useState } from "react";
 import type { SubmitEvent } from "react";
 import { Field, Modal } from "../../components/ui";
@@ -425,7 +426,7 @@ function UserForm({
                 {available.map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.nombres} {person.apellidos} ·{" "}
-                    {person.documento || "Sin documento"}
+                    {documentoTipoNombre(person.tipoDocumento)} · {person.documento || "Sin documento"}
                   </option>
                 ))}
               </select>

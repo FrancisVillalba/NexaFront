@@ -22,11 +22,8 @@ export interface Contact {
   phone: string;
   email: string;
   address: string;
-  credit?: number;
 }
-export interface Client extends Contact {
-  credit: number;
-}
+export type Client = Contact;
 export interface CartItem {
   productId: number;
   qty: number;

@@ -6,6 +6,7 @@ import type { PersonDto } from "../../types";
 export interface PersonInput {
   nombres: string;
   apellidos: string;
+  tipoDocumentoId: number;
   documento: string;
   correo: string;
   telefono: string;
