@@ -25,4 +25,4 @@ export const administrationNavigation: [string, string, Icon][] = [
 ];
 
 // Estos módulos aún conservan la demostración local y no alteran el inventario real.
-export const rutasDemostracion = ["inicio", "presupuestos", "nuevo-presupuesto", "reportes", "configuracion"];
+export const rutasDemostracion = ["configuracion"];

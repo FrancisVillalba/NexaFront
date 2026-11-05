@@ -1,198 +1,73 @@
+import { ReportesVentasDias, ReportesCategorias } from "../reportes/reportesGraficos";
+import { useEffect, useState } from "react";
 import * as I from "../../icons";
-import { money, num, date } from "../../services/formatters";
-import { stock, status } from "../inventario/inventarioDemostracion";
-import { useApp } from "../../services/AppContext";
+import { Field } from "../../components/ui";
 import { Button } from "../../components/shared/Button";
-import { Badge } from "../../components/shared/Badge";
-import { ProductName } from "../../components/shared/ProductImage";
-import { PageTitle } from "../../components/shared/PageTitle";
-import { Panel } from "../../components/shared/Panel";
 import { Stat } from "../../components/shared/Stats";
-import { Table } from "../../components/shared/Table";
-import { SalesChart, Composition } from "./inicioGraficos";
+import { useApp } from "../../services/AppContext";
+import { useAccess } from "../../services/AccessContext";
+import { VentasDetalle } from "../ventas/ventasDetalle";
+import { ReportesTabla } from "../reportes/reportesTabla";
+import { reportesRestarDias, reportesFechaHora, reportesMoneda, reportesNumero } from "../reportes/reportesServicio";
+import type { InicioResumen, ReporteDeposito } from "../reportes/reportesTipos";
+import { inicioServicio } from "./inicioServicio";
 
-// Pantalla de inicio con indicadores de los datos comerciales.
 export function Dashboard() {
-  const {
-    data,
-    warehouse,
-    go,
-    openSale,
-    viewInvoice,
-  } = useApp();
-  const invoices = data.invoices.filter(
-      (x) => x.state !== "Anulada" && x.warehouse === warehouse,
-    ),
-    low = data.products.filter((p) => stock(p, warehouse) <= p.min),
-    debt = invoices.filter((x) => x.total > x.paid),
-    total = invoices.reduce((a, x) => a + x.total, 0);
-  return (
-    <>
-      <PageTitle
-        title="Resumen del negocio"
-        subtitle="Hoy es lunes, 26 de octubre de 2026"
-      >
-        <Button
-          access="ventas.crear"
-          icon={I.Plus}
-          variant="green"
-          onClick={openSale}
-        >
-          Nueva venta
-        </Button>
-      </PageTitle>
-      <div className="stats-grid">
-        <Stat
-          label="Ventas del mes"
-          value={money(total)}
-          note={invoices.length + " ventas registradas"}
-          icon={I.ShoppingCart}
-          color="green"
-          onClick={() => go("ventas")}
-        />
-        <Stat
-          label="Productos"
-          value={num(data.products.length)}
-          note="Productos en tu catálogo"
-          icon={I.Box}
-          onClick={() => go("inventario")}
-        />
-        <Stat
-          label="Stock bajo"
-          value={low.length}
-          note="Productos por reponer"
-          icon={I.AlertTriangle}
-          color="orange"
-          onClick={() => {
-            go("inventario");
-          }}
-        />
-        <Stat
-          label="Facturas pendientes"
-          value={debt.length}
-          note={money(debt.reduce((a, x) => a + x.total - x.paid, 0))}
-          icon={I.Receipt}
-          color="purple"
-          onClick={() => go("ventas")}
-        />
-      </div>
-      <div className="dashboard-main">
-        <Panel
-          title="Productos con stock bajo"
-          icon={I.AlertTriangle}
-          color="red"
-          action={
-            <Button
-              variant="text"
-              onClick={() => {
-                go("inventario");
-              }}
-            >
-              Ver inventario <I.ArrowRight size={16} />
-            </Button>
-          }
-        >
-          <Table
-            headers={[
-              "Código / producto",
-              "Disponible",
-              "Mínimo",
-              "Estado",
-              "",
-            ]}
-            empty={!low.length}
-          >
-            {low.slice(0, 6).map((p) => (
-              <tr key={p.id}>
-                <td>
-                  <ProductName p={p} />
-                </td>
-                <td className="danger-text">
-                  <b>{num(stock(p, warehouse))}</b> <small>{p.unit}</small>
-                </td>
-                <td>{p.min}</td>
-                <td>
-                  <Badge>{status(p, warehouse)}</Badge>
-                </td>
-                <td>
-                  <Button
-                    access="movimientos.crear"
-                    variant="outline small"
-                    icon={I.Plus}
-                    onClick={() => go("inventario")}
-                  >
-                    Ver inventario
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </Table>
-        </Panel>
-        <Panel
-          title="Últimas ventas"
-          icon={I.ChartBar}
-          color="green"
-          action={
-            <Button variant="text" onClick={() => go("ventas")}>
-              Ver todas <I.ArrowRight size={16} />
-            </Button>
-          }
-        >
-          <Table
-            headers={["Comprobante", "Cliente", "Total", "Estado"]}
-            empty={!invoices.length}
-          >
-            {invoices.slice(0, 6).map((x) => (
-              <tr
-                key={x.id}
-                onClick={() => viewInvoice(x)}
-                className="clickable"
-              >
-                <td>
-                  <button
-                    className="table-link"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      viewInvoice(x);
-                    }}
-                  >
-                    {x.number.slice(-7)}
-                  </button>
-                  <small className="block">{date(x.date)}</small>
-                </td>
-                <td>{(data.clients.find((c) => c.id === x.client)?.name ?? "Cliente no disponible")}</td>
-                <td className="nowrap">
-                  <b>{money(x.total)}</b>
-                </td>
-                <td>
-                  <Badge>{x.state}</Badge>
-                </td>
-              </tr>
-            ))}
-          </Table>
-        </Panel>
-      </div>
-      <div className="dashboard-bottom">
-        <Panel
-          title="Ventas de los últimos 7 días"
-          icon={I.ChartBar}
-          action={
-            <span className="panel-total">
-              <small>Total del período</small>
-              <b>{money(total)}</b>
-            </span>
-          }
-        >
-          <SalesChart invoices={invoices} />
-        </Panel>
-        <Panel
-          title="Composición del inventario"
-          icon={I.ChartBar}
-          color="purple"
-        >
-          <Composition products={data.products} warehouse={warehouse} />
-        </Panel>
-      </div>
-    </>
-  );
+  const { go, openSale } = useApp();
+  const puede = useAccess();
+  const permisos = ["ventas.ver", "compras.ver", "inventario.ver", "clientes.cuenta_corriente", "proveedores.cuenta_corriente"].filter(puede).join("|");
+  const [depositoId, setDepositoId] = useState<number | null>(null), [depositos, setDepositos] = useState<ReporteDeposito[]>([]);
+  const [datos, setDatos] = useState<InicioResumen | null>(null), [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(""), [errorDepositos, setErrorDepositos] = useState(""), [revision, setRevision] = useState(0);
+  const [ventaId, setVentaId] = useState<number | null>(null);
+  useEffect(() => {
+    const controlador = new AbortController();
+    setErrorDepositos("");
+    inicioServicio.depositos(controlador.signal).then(res => { if (!controlador.signal.aborted) setDepositos(res); })
+      .catch(fallo => { if (!controlador.signal.aborted) setErrorDepositos(fallo instanceof Error ? fallo.message : "No se pudieron consultar depósitos."); });
+    return () => controlador.abort();
+  }, [revision]);
+  useEffect(() => {
+    const controlador = new AbortController();
+    setCargando(true); setError(""); setDatos(null);
+    inicioServicio.consultar(depositoId, controlador.signal).then(res => { if (!controlador.signal.aborted) setDatos(res); })
+      .catch(fallo => { if (!controlador.signal.aborted) setError(fallo instanceof Error ? fallo.message : "No se pudo consultar el resumen."); })
+      .finally(() => { if (!controlador.signal.aborted) setCargando(false); });
+    return () => controlador.abort();
+  }, [depositoId, revision, permisos]);
+  useEffect(() => {
+    const actualizar = () => setRevision(x => x + 1);
+    window.addEventListener("focus", actualizar); return () => window.removeEventListener("focus", actualizar);
+  }, []);
+  return <>
+    <div className="page-title"><div><h1>Resumen del negocio</h1><p>Ventas, compras, cobros, pagos e inventario reales.</p></div><div className="page-actions">
+      <Button variant="secondary" disabled={cargando} onClick={() => setRevision(x => x + 1)}>Actualizar</Button>
+      <Button access="ventas.crear" variant="green" icon={I.Plus} onClick={openSale}>Nueva venta</Button>
+    </div></div>
+    <div className="filter-bar"><Field label="Depósito"><select value={depositoId ?? ""} onChange={e => setDepositoId(e.target.value ? Number(e.target.value) : null)}><option value="">Todos los depósitos</option>
+      {depositos.map(x => <option key={x.id} value={x.id}>{x.nombre}{!x.activo && " (inactivo)"}</option>)}</select></Field></div>
+    {errorDepositos && <p className="form-error" role="alert">{errorDepositos} <Button variant="secondary" onClick={() => setRevision(x => x + 1)}>Reintentar depósitos</Button></p>}
+    {error ? <p className="form-error" role="alert">{error}</p> : cargando ? <p role="status">Consultando el resumen del negocio…</p> : datos && <>
+      <p>{datos.depositoNombre} · Consultado: {reportesFechaHora(datos.generadoEn)} · Mes: {datos.desde} al {datos.hasta}</p>
+      {!datos.indicadores.length && <p className="info-strip">Tu perfil no tiene permisos para consultar las secciones comerciales del resumen.</p>}
+      <div className="stats-grid">{datos.indicadores.map(x => <Stat key={x.codigo} label={x.nombre}
+        value={x.codigo === "stock-bajo" ? reportesNumero(x.valor) : reportesMoneda(x.valor)} note={x.nota + " · " + x.cantidad + " registros"}
+        icon={x.codigo === "stock-bajo" ? I.AlertTriangle : I.ChartBar} color={x.codigo === "stock-bajo" ? "orange" : "blue"}
+        onClick={puede(x.ruta + ".ver") ? () => go(x.ruta) : undefined} />)}</div>
+      {puede("ventas.ver") && <section className="panel mt"><h3>Últimas ventas confirmadas · todos los períodos</h3>
+        <div className="table-wrap"><table><thead><tr><th>Venta</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Saldo actual</th><th>Acciones</th></tr></thead><tbody>
+          {datos.ultimasVentas.map(x => <tr key={x.id}><td>{x.referencia}</td><td>{x.fecha && reportesFechaHora(x.fecha)}</td><td>{x.nombre}</td><td>{reportesMoneda(x.importe)}</td><td>{reportesMoneda(x.saldo)}</td>
+            <td><Button variant="outline small" onClick={() => setVentaId(x.id)}>Ver venta</Button></td></tr>)}
+        </tbody></table>{!datos.ultimasVentas.length && <p className="empty">No hay ventas confirmadas.</p>}</div>
+      </section>}
+      {puede("inventario.ver") && <section className="panel mt"><h3>Productos activos con stock bajo · hasta 6 productos</h3>
+        <p className="muted">Stock menor o igual al mínimo. Con todos los depósitos se suma el stock por producto, incluidos los depósitos inactivos.</p>
+        <ReportesTabla tipo="inventario" filas={datos.stockBajo} />
+      </section>}
+      {puede("ventas.ver") && <section className="panel mt"><h3>Ventas de los últimos 7 días</h3><ReportesVentasDias dias={datos.ventasSemana} desde={reportesRestarDias(datos.hasta, 6)} hasta={datos.hasta} /></section>}
+      {puede("inventario.ver") && <section className="panel mt"><h3>Composición del inventario por categoría</h3><ReportesCategorias categorias={datos.categorias} /></section>}
+      <p className="form-help">Ventas, compras, cobros y pagos muestran las operaciones vigentes del mes. Inventario y cuentas pendientes muestran saldos actuales de todos los períodos. No representa un cierre contable ni movimientos de Caja.</p>
+    </>}
+    {ventaId !== null && puede("ventas.ver") && <VentasDetalle id={ventaId} alCerrar={() => setVentaId(null)} alCambiar={() => setRevision(x => x + 1)} />}
+  </>;
 }

@@ -1,338 +1,150 @@
-import type { Product } from "../../types/commercial";
-import { useState } from "react";
-import * as I from "../../icons";
-import { IconButton, Field } from "../../components/ui";
-import { TODAY } from "../../services/commercialConfig";
-import { uid } from "../../services/commercialValidation";
-import { money, num } from "../../services/formatters";
-import { stock } from "../inventario/inventarioDemostracion";
-import { useApp } from "../../services/AppContext";
-import { requireRecord } from "../../components/shared/helpers";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { SubmitEvent } from "react";
+import { Field, Modal } from "../../components/ui";
 import { Button } from "../../components/shared/Button";
-import { Empty } from "../../components/shared/Empty";
-import { ProductImage, ProductName } from "../../components/shared/ProductImage";
-import { PageTitle } from "../../components/shared/PageTitle";
-import { Panel } from "../../components/shared/Panel";
-import { Table } from "../../components/shared/Table";
+import { useApp } from "../../services/AppContext";
+import { documentoTipoNombre } from "../contactos/contactosDocumentos";
+import { useVentasBusqueda } from "../ventas/ventasBusqueda";
+import { ventasMoneda } from "../ventas/ventasServicio";
+import { presupuestosRespuestaIncierta, presupuestosServicio, presupuestosVencimientoInicial } from "./presupuestosServicio";
+import type { Presupuesto, PresupuestoGuardarEntrada } from "./presupuestosTipos";
+import { PresupuestosDetalle } from "./presupuestosDetalle";
+import type { VentaCliente, VentaCotizacion, VentaDeposito, VentaProducto } from "../ventas/ventasTipos";
 
-// Editor local de presupuestos, separado del registro de ventas reales.
-export function PresupuestosEdicion() {
-  const quoteOnly = true;
-  const { can, contactosCargando } = useApp();
-  const clientesActivos = useApp().data.clients.filter(cliente => cliente.active === true);
-  const {
-    data,
-    warehouse,
-    cart,
-    setCart,
-    saleClient,
-    setSaleClient,
-    saleDiscount,
-    go,
-    commit,
-  } = useApp();
-  const [q, setQ] = useState(""),
-    [payment, setPayment] = useState("Efectivo"),
-    [discount, setDiscount] = useState(saleDiscount || 0),
-    [error, setError] = useState("");
-  const items = cart.map((x) => ({
-      ...x,
-      p: requireRecord(
-        data.products.find((p) => p.id === x.productId),
-        "Producto",
-      ),
-    })),
-    subtotal = items.reduce((a, x) => a + x.qty * x.p.price, 0),
-    total = Math.max(0, Math.round(subtotal - Number(discount))),
-    matches = data.products.filter((p) =>
-      (p.name + " " + p.code + " " + p.barcode)
-        .toLowerCase()
-        .includes(q.toLowerCase()),
-    );
-  function add(p: Product) {
-    setError("");
-    if (stock(p, warehouse) <= 0) {
-      setError("Este producto no tiene stock en " + warehouse + ".");
-      return;
-    }
-    const existing = cart.find((x) => x.productId === p.id),
-      qty = (existing?.qty || 0) + 1;
-    if (qty > stock(p, warehouse)) {
-      setError("No hay más stock disponible para " + p.name + ".");
-      return;
-    }
-    setCart(
-      existing
-        ? cart.map((x) => (x.productId === p.id ? { ...x, qty } : x))
-        : [...cart, { productId: p.id, qty: 1 }],
-    );
-    setQ("");
+interface LineaBorrador { producto: VentaProducto; cantidad: number; }
+export function PresupuestosEdicion({ presupuesto, alCerrar, alGuardar }: { presupuesto?: Presupuesto; alCerrar: () => void; alGuardar: (id: number) => void }) {
+  const [buscarCliente, setBuscarCliente] = useState(""), [cliente, setCliente] = useState<VentaCliente | null>(presupuesto ? { id: presupuesto.clienteId, nombre: presupuesto.clienteNombre, tipoDocumento: presupuesto.clienteTipoDocumento, documento: presupuesto.clienteDocumento } : null);
+  const clientes = useVentasBusqueda(buscarCliente, presupuestosServicio.clientes);
+  const [depositos, setDepositos] = useState<VentaDeposito[]>([]), [depositoId, setDepositoId] = useState(presupuesto ? String(presupuesto.depositoId) : "");
+  const [errorDepositos, setErrorDepositos] = useState(""), [cargandoDepositos, setCargandoDepositos] = useState(true);
+  const [revision, setRevision] = useState(0);
+  const [buscarProducto, setBuscarProducto] = useState(""), [producto, setProducto] = useState<VentaProducto | null>(null);
+  const consultarProductos = useCallback((buscar: string, signal?: AbortSignal) => presupuestosServicio.productos(Number(depositoId), buscar, signal), [depositoId]);
+  const productos = useVentasBusqueda(buscarProducto, consultarProductos);
+  const [cantidad, setCantidad] = useState("1"), [items, setItems] = useState<LineaBorrador[]>(presupuesto?.items.map(x => ({ producto: { id: x.productoId, codigo: x.productoCodigo, nombre: x.productoNombre, unidadMedida: x.unidadMedida, precioVenta: x.precioUnitario, disponible: 0 }, cantidad: x.cantidad })) ?? []);
+  const [descuento, setDescuento] = useState(String(presupuesto?.descuento ?? 0)), [observaciones, setObservaciones] = useState(presupuesto?.observaciones ?? "");
+  const [fechaVencimiento, setFechaVencimiento] = useState(presupuesto?.fechaVencimiento ?? presupuestosVencimientoInicial());
+  const [cotizacion, setCotizacion] = useState<VentaCotizacion | null>(null);
+  const [error, setError] = useState(""), [ocupado, setOcupado] = useState(false), [incierta, setIncierta] = useState(false);
+  const pendiente = useRef(false), solicitud = useRef<PresupuestoGuardarEntrada | null>(null);
+  const bloqueado = ocupado || incierta;
+
+  useEffect(() => {
+    const controlador = new AbortController();
+    setCargandoDepositos(true); setErrorDepositos("");
+    presupuestosServicio.depositos(controlador.signal).then(datos => { if (!controlador.signal.aborted) setDepositos(datos); })
+      .catch(fallo => { if (!controlador.signal.aborted) setErrorDepositos(fallo instanceof Error ? fallo.message : "No se pudieron cargar los depósitos."); })
+      .finally(() => { if (!controlador.signal.aborted) setCargandoDepositos(false); });
+    return () => controlador.abort();
+  }, [revision]);
+  useEffect(() => {
+    if (!incierta) return;
+    const avisar = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [incierta]);
+
+  function invalidar() { setCotizacion(null); solicitud.current = null; setError(""); }
+  function cerrar() {
+    if (pendiente.current) return;
+    const texto = incierta ? "No se recibió la respuesta de confirmación. Reintentá para comprobarla; si salís, revisá el listado antes de crear otro presupuesto. ¿Querés salir?"
+      : "Tenés un presupuesto sin guardar. ¿Querés descartarla?";
+    if ((!items.length && !cliente && !observaciones) || window.confirm(texto)) alCerrar();
   }
-  function saveQuote() {
-    if (!can("presupuestos.crear")) return;
-    if (contactosCargando || !clientesActivos.some(cliente => cliente.id === saleClient)) {
-      setError("Seleccioná un cliente activo del backend.");
-      return;
-    }
-    if (!cart.length) {
-      setError("Agregá productos antes de guardar.");
-      return;
-    }
-    const s = structuredClone(data);
-    s.quotes.unshift({
-      id: uid(),
-      number: "PRE-" + String(s.quotes.length + 1).padStart(5, "0"),
-      date: TODAY,
-      client: saleClient,
-      warehouse,
-      items: cart.map((x) => ({ ...x })),
-      discount: Number(discount) || 0,
-      total,
-      state: "Borrador",
-    });
-    commit(s, "Presupuesto guardado");
-    setCart([]);
-    go("presupuestos");
+  function cambiarDeposito(valor: string) {
+    if (items.length && !window.confirm("Cambiar el depósito quitará los productos de este presupuesto. ¿Querés continuar?")) return;
+    setDepositoId(valor); setProducto(null); setBuscarProducto(""); setItems([]); invalidar();
   }
-  return (
-    <>
-      <PageTitle
-        title={quoteOnly ? "Nuevo presupuesto" : "Nueva venta"}
-        subtitle="Registrá la venta y actualizá el stock en un solo paso."
-      >
-        <Button
-          variant="secondary"
-          icon={I.ArrowLeft}
-          onClick={() => go(quoteOnly ? "presupuestos" : "ventas")}
-        >
-          {quoteOnly ? "Volver a presupuestos" : "Volver a ventas"}
-        </Button>
-      </PageTitle>
-      <div className="pos-layout">
-        <Panel className="pos-products">
-          <div className="pos-fields">
-            <Field label="Cliente">
-              <select
-                value={clientesActivos.some(cliente => cliente.id === saleClient) ? saleClient : ""}
-                disabled={contactosCargando || !can("clientes.ver")}
-                onChange={(e) => setSaleClient(e.target.value)}
-              >
-                <option value="">{contactosCargando ? "Cargando clientes…" : "Seleccionar cliente"}</option>
-                {clientesActivos.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {!can("clientes.ver") ? <small>Necesitás permiso para consultar Clientes.</small> : !contactosCargando && !clientesActivos.length && <small>No hay clientes activos. Registrá uno desde Clientes.</small>}
-            </Field>
-            <Field label="Condición de venta">
-              <select
-                value={payment === "Crédito" ? "Crédito" : "Contado"}
-                onChange={(e) =>
-                  setPayment(
-                    e.target.value === "Crédito" ? "Crédito" : "Efectivo",
-                  )
-                }
-              >
-                <option>Contado</option>
-                <option>Crédito</option>
-              </select>
-            </Field>
-            <Field label="Depósito">
-              <input readOnly value={warehouse} />
-            </Field>
-          </div>
-          <form
-            className="pos-search"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (matches[0]) add(matches[0]);
-            }}
-          >
-            <I.Barcode size={26} />
-            <input
-              aria-label="Buscar producto para la venta"
-              placeholder="Buscar producto o escanear código…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <Button
-              type="submit"
-              icon={I.Search}
-              aria-label="Agregar primer resultado"
-            />
-          </form>
-          {q ? (
-            <div className="product-results">
-              {matches.slice(0, 6).map((p) => (
-                <button key={p.id} onClick={() => add(p)}>
-                  <ProductName p={p} />
-                  <span>
-                    {money(p.price)}
-                    <small>
-                      {num(stock(p, warehouse))} {p.unit} disponibles
-                    </small>
-                  </span>
-                  <I.Plus size={18} />
-                </button>
-              ))}
-              {!matches.length && <Empty />}
-            </div>
-          ) : (
-            <div className="recommended">
-              <b>Productos frecuentes</b>
-              <div>
-                {[data.products[0], data.products[2], data.products[1]].map(
-                  (p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => add(p)}
-                      aria-label={"Agregar " + p.name}
-                    >
-                      <ProductImage product={p} />
-                      <span>
-                        {p.name}
-                        <small>{money(p.price)}</small>
-                      </span>
-                      <I.Plus size={20} />
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-          )}
-          <Table
-            headers={["", "Producto", "Cantidad", "Precio", "Importe", "Stock"]}
-            empty={!cart.length}
-          >
-            {items.map(({ p, qty, productId }) => (
-              <tr key={productId}>
-                <td>
-                  <IconButton
-                    icon={I.X}
-                    label={"Quitar " + p.name}
-                    onClick={() =>
-                      setCart(cart.filter((x) => x.productId !== productId))
-                    }
-                  />
-                </td>
-                <td>
-                  <ProductName p={p} />
-                </td>
-                <td>
-                  <div className="quantity">
-                    <button
-                      aria-label={"Restar " + p.name}
-                      onClick={() =>
-                        setCart(
-                          cart.map((x) =>
-                            x.productId === productId
-                              ? { ...x, qty: Math.max(1, x.qty - 1) }
-                              : x,
-                          ),
-                        )
-                      }
-                    >
-                      <I.Minus size={13} />
-                    </button>
-                    <input
-                      aria-label={"Cantidad " + p.name}
-                      type="number"
-                      min={["metro", "kilo"].includes(p.unit) ? 0.01 : 1}
-                      step={["metro", "kilo"].includes(p.unit) ? 0.01 : 1}
-                      value={qty}
-                      onChange={(e) =>
-                        setCart(
-                          cart.map((x) =>
-                            x.productId === productId
-                              ? { ...x, qty: Number(e.target.value) }
-                              : x,
-                          ),
-                        )
-                      }
-                    />
-                    <button
-                      aria-label={"Sumar " + p.name}
-                      onClick={() =>
-                        setCart(
-                          cart.map((x) =>
-                            x.productId === productId
-                              ? { ...x, qty: x.qty + 1 }
-                              : x,
-                          ),
-                        )
-                      }
-                    >
-                      <I.Plus size={13} />
-                    </button>
-                  </div>
-                  <small className="block">{p.unit}</small>
-                </td>
-                <td className="nowrap">{money(p.price)}</td>
-                <td className="nowrap">
-                  <b>{money(qty * p.price)}</b>
-                </td>
-                <td>
-                  <span className="stock-note">
-                    {num(stock(p, warehouse))} disp.
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </Table>
-          <div className="pos-bottom">
-            <I.InfoCircle size={17} />
-            <span>
-              Presupuesto de demostración. No modifica el inventario real.
-            </span>
-          </div>
-        </Panel>
-        <Panel className="checkout">
-          <h2>
-            <I.ShoppingCart size={24} /> Resumen de presupuesto
-          </h2>
-          <dl>
-            <div>
-              <dt>Subtotal</dt>
-              <dd>{money(subtotal)}</dd>
-            </div>
-            <div>
-              <dt>
-                <label htmlFor="discount">Descuento (Gs.)</label>
-              </dt>
-              <dd>
-                <input
-                  id="discount"
-                  type="number"
-                  min="0"
-                  max={subtotal}
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                />
-              </dd>
-            </div>
-          </dl>
-          <div className="total">
-            <span>Total</span>
-            <strong>{money(total)}</strong>
-          </div>
-          {error && (
-            <div className="error" role="alert">
-              {error}
-            </div>
-          )}
-          <Button
-            access="presupuestos.crear"
-            variant="secondary full"
-            icon={I.FileText}
-            disabled={!cart.length || contactosCargando || !clientesActivos.some(cliente => cliente.id === saleClient)}
-            onClick={saveQuote}
-          >
-            Guardar presupuesto
-          </Button>
-        </Panel>
+  function agregar() {
+    const qty = Number(cantidad);
+    if (!producto || !cantidad.trim() || !Number.isFinite(qty) || qty <= 0 || qty > 99999999999.999
+      || Math.abs(qty * 1000 - Math.round(qty * 1000)) > 0.001) { setError("Seleccioná un producto y una cantidad válida, con hasta tres decimales."); return; }
+    if (!["metro", "kilo"].includes(producto.unidadMedida) && !Number.isInteger(qty)) { setError("Esta unidad requiere cantidades enteras."); return; }
+    if (items.length >= 200 || items.some(x => x.producto.id === producto.id)) { setError("No se permiten productos repetidos ni más de 200 líneas. Quitá la línea para cambiar su cantidad."); return; }
+    setItems(anterior => [...anterior, { producto, cantidad: qty }]); setProducto(null); setBuscarProducto(""); setCantidad("1"); invalidar();
+  }
+  async function cotizar(evento: SubmitEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    if (pendiente.current || incierta) return;
+    const rebaja = Number(descuento);
+    if (!cliente || !depositos.some(x => x.id === Number(depositoId)) || !items.length || !descuento.trim() || !Number.isFinite(rebaja) || rebaja < 0) {
+      setError("Seleccioná cliente, depósito y productos, y revisá el descuento."); return;
+    }
+    pendiente.current = true; setOcupado(true); setError(""); setCotizacion(null); solicitud.current = null;
+    try {
+      setCotizacion(await presupuestosServicio.cotizar({ clienteId: cliente.id, depositoId: Number(depositoId), descuento: rebaja,
+        items: items.map(x => ({ productoId: x.producto.id, cantidad: x.cantidad })) }));
+    } catch (fallo) { setError(fallo instanceof Error ? fallo.message : "No se pudo calcular el total."); }
+    finally { pendiente.current = false; setOcupado(false); }
+  }
+  async function confirmar() {
+    if (pendiente.current || !cotizacion) return;
+    // Al perderse una respuesta, se bloquea la edición y se reenvía exactamente el mismo UUID y contenido.
+    solicitud.current ??= { operacionId: crypto.randomUUID(), clienteId: cotizacion.clienteId, depositoId: cotizacion.depositoId,
+      descuento: cotizacion.descuento, observaciones: observaciones.trim(), fechaVencimiento, version: presupuesto?.version ?? null,
+      items: cotizacion.items.map(x => ({ productoId: x.productoId, cantidad: x.cantidad, versionProducto: x.versionProducto })) };
+    pendiente.current = true; setOcupado(true); setError("");
+    try { const guardado = await presupuestosServicio.guardar(presupuesto?.id ?? null, solicitud.current); setIncierta(false); alGuardar(guardado.id); }
+    catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : "No se pudo guardar el presupuesto.");
+      setIncierta(presupuestosRespuestaIncierta(fallo));
+    } finally { pendiente.current = false; setOcupado(false); }
+  }
+  return <Modal title={presupuesto ? "Editar " + presupuesto.numero : "Nuevo presupuesto"} onClose={cerrar} wide><form onSubmit={cotizar}>
+    <fieldset disabled={bloqueado} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      <div className="form-grid">
+        <Field label="Buscar cliente" placeholder="Nombre, razón social o documento, mínimo 2 caracteres…" maxLength={100} value={buscarCliente} onChange={e => { setBuscarCliente(e.target.value); setCliente(null); invalidar(); }} />
+        <Field label="Cliente" required><select required value={cliente?.id ?? ""} disabled={clientes.cargando} onChange={e => { setCliente(clientes.items.find(x => x.id === Number(e.target.value)) ?? null); invalidar(); }}>
+          <option value="">{clientes.cargando ? "Buscando…" : "Seleccionar cliente"}</option>{cliente && !clientes.items.some(x => x.id === cliente.id) && <option value={cliente.id}>{cliente.nombre} · {cliente.documento}</option>}{clientes.items.map(x => <option key={x.id} value={x.id}>{x.nombre} · {documentoTipoNombre(x.tipoDocumento)} {x.documento}</option>)}
+        </select></Field>
+        <Field label="Depósito" required><select required value={depositoId} disabled={cargandoDepositos || !!errorDepositos} onChange={e => cambiarDeposito(e.target.value)}>
+          <option value="">Seleccionar depósito</option>{depositos.map(x => <option key={x.id} value={x.id}>{x.nombre}</option>)}
+        </select></Field>
+        <Field label="Fecha de vencimiento" required type="date" value={fechaVencimiento} onChange={e => { setFechaVencimiento(e.target.value); invalidar(); }} />
+        <Field label="Observaciones"><textarea rows={2} maxLength={500} value={observaciones} onChange={e => { setObservaciones(e.target.value); invalidar(); }} /></Field>
       </div>
-    </>
-  );
+      {clientes.error && <p className="form-error" role="alert">{clientes.error} <Button type="button" onClick={clientes.reintentar}>Reintentar clientes</Button></p>}
+      {!clientes.cargando && buscarCliente.trim().length >= 2 && !clientes.error && !clientes.items.length && <p>No hay clientes activos para esa búsqueda.</p>}
+      <p className="muted">Las búsquedas muestran hasta 20 coincidencias. Refiná el nombre o documento si hace falta.</p>
+      {errorDepositos && <p className="form-error" role="alert">{errorDepositos} <Button type="button" onClick={() => setRevision(x => x + 1)}>Reintentar depósitos</Button></p>}
+      {!cargandoDepositos && !errorDepositos && !depositos.length && <p>No hay depósitos activos. Registrá uno desde Administración → Depósitos.</p>}
+      <div className="form-grid mt">
+        <Field label="Buscar producto" value={buscarProducto} disabled={!depositoId} maxLength={100} placeholder="Nombre, código o código de barras…" onChange={e => { setBuscarProducto(e.target.value); setProducto(null); }} />
+        <Field label="Producto" required><select value={producto?.id ?? ""} disabled={!depositoId || productos.cargando} onChange={e => setProducto(productos.items.find(x => x.id === Number(e.target.value)) ?? null)}>
+          <option value="">{productos.cargando ? "Buscando…" : "Seleccionar producto"}</option>{productos.items.map(x => <option key={x.id} value={x.id}>{x.codigo} · {x.nombre} · Disponible: {x.disponible} {x.unidadMedida}</option>)}
+        </select></Field>
+        <Field label="Cantidad a agregar" type="number" required min="0.001" max="99999999999.999" step={producto && !["metro", "kilo"].includes(producto.unidadMedida) ? "1" : "0.001"} value={cantidad} onChange={e => setCantidad(e.target.value)} />
+      </div>
+      {productos.error && <p className="form-error" role="alert">{productos.error} <Button type="button" onClick={productos.reintentar}>Reintentar productos</Button></p>}
+      {!productos.cargando && buscarProducto.trim().length >= 2 && !productos.error && !productos.items.length && <p>No hay productos activos para esa búsqueda.</p>}
+      {producto && <p>{ventasMoneda(producto.precioVenta)} por {producto.unidadMedida} · Disponible: {producto.disponible}</p>}
+      <Button type="button" variant="secondary" disabled={!producto} onClick={agregar}>Agregar producto</Button>
+      <div className="table-wrap mt"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th>Acciones</th></tr></thead><tbody>{items.map(x => {
+        const calculado = cotizacion?.items.find(linea => linea.productoId === x.producto.id);
+        return <tr key={x.producto.id}><td>{x.producto.codigo} · {x.producto.nombre}</td><td>{x.cantidad} {x.producto.unidadMedida}</td>
+          <td>{ventasMoneda(calculado?.precioUnitario ?? x.producto.precioVenta)}</td><td>{ventasMoneda(calculado?.subtotal ?? x.cantidad * x.producto.precioVenta)}</td>
+          <td><Button type="button" variant="danger-outline small" aria-label={"Quitar " + x.producto.nombre} onClick={() => { setItems(anterior => anterior.filter(linea => linea.producto.id !== x.producto.id)); invalidar(); }}>Quitar</Button></td></tr>;
+      })}</tbody></table>{!items.length && <p className="empty">Agregá al menos un producto.</p>}</div>
+      <Field label="Descuento total (Gs.)" type="number" required min="0" max="999999999999.99" step="0.01" value={descuento} onChange={e => { setDescuento(e.target.value); invalidar(); }} />
+      <Button type="submit" variant="secondary" disabled={!cliente || !depositoId || !items.length || cargandoDepositos || !!errorDepositos}>Calcular total</Button>
+    </fieldset>
+    {cotizacion ? <div className="mt"><p>{cotizacion.clienteNombre} · {cotizacion.depositoNombre}</p><p>Subtotal: {ventasMoneda(cotizacion.subtotal)} · Descuento: {ventasMoneda(cotizacion.descuento)}</p>
+      <div className="total"><span>Total calculado por el backend</span><strong>{ventasMoneda(cotizacion.total)}</strong></div></div>
+      : <p className="muted mt">Calculá el total antes de confirmar. Los precios mostrados inicialmente son una referencia del catálogo.</p>}
+    <p className="form-help">Guardar conserva la propuesta sin reservar ni descontar stock. Solo se editan borradores. El stock se valida al convertir en venta.</p>
+    {error && <p className="form-error" role="alert">{error}</p>}
+    {incierta && <p role="status">No se recibió una respuesta definitiva. Reintentá la confirmación para comprobarla sin duplicar el presupuesto.</p>}
+    <div className="modal-actions"><Button type="button" variant="secondary" disabled={ocupado} onClick={cerrar}>Cerrar</Button>
+      <Button type="button" access={presupuesto ? "presupuestos.editar" : "presupuestos.crear"} disabled={ocupado || !cotizacion || !fechaVencimiento} onClick={confirmar}>{ocupado ? "Procesando…" : incierta ? "Reintentar confirmación" : "Guardar presupuesto"}</Button></div>
+  </form></Modal>;
+}
+
+
+// La ruta de nuevo presupuesto abre el mismo editor que utiliza el listado.
+export function PresupuestosNuevo() {
+  const { go } = useApp();
+  const [id, setId] = useState<number | null>(null);
+  return <><div className="page-title"><h1>Presupuestos</h1><Button variant="secondary" onClick={() => go("presupuestos")}>Volver a presupuestos</Button></div>
+    {id === null ? <PresupuestosEdicion alCerrar={() => go("presupuestos")} alGuardar={setId} />
+      : <PresupuestosDetalle id={id} alCerrar={() => go("presupuestos")} alCambiar={() => {}} />}</>;
 }
